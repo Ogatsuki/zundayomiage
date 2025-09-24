@@ -1,5 +1,0 @@
-{
-  "/page": "app/page.js",
-  "/api/voicevox/audio-query/route": "app/api/voicevox/audio-query/route.js",
-  "/api/voicevox/synthesis/route": "app/api/voicevox/synthesis/route.js"
-}
