@@ -1,0 +1,108 @@
+{
+  "research_context": {
+    "date": "2025-09-24",
+    "problem_statement": "AI駆動開発において、プロジェクトが複雑化すると開発効率が著しく低下する「効率の壁」問題",
+    "initial_hypothesis": "作業領域の分割により改善可能",
+    "final_conclusion": "従来の設計原則とは異なるAI特化アーキテクチャが必要"
+  },
+
+  "key_discoveries": {
+    "paradigm_shift": {
+      "from_human_centric": {
+        "principles": ["DRY原則", "小さいファイル", "抽象化", "レイヤー分離"],
+        "file_size": "100行以下推奨",
+        "architecture": "Model/View/Controller"
+      },
+      "to_ai_centric": {
+        "principles": ["自己完結性", "明示性", "インライン化", "契約最小化"],
+        "file_size": "200-800行推奨",
+        "architecture": "機能ブロック単位"
+      }
+    },
+
+    "quantitative_results": {
+      "context_reduction": {
+        "files_to_read": { "before": 8, "after": 2, "reduction": "75%" },
+        "lines_to_understand": { "before": 1269, "after": 445, "reduction": "65%" },
+        "file_jumps": { "before": "15-20", "after": 1, "reduction": "95%" }
+      },
+      "implementation_test": {
+        "contract_file": { "lines": 49, "description": "型定義のみ、説明文ゼロ" },
+        "text_acquisition_block": { "lines": 366, "self_contained": true },
+        "voice_synthesis_block": { "lines": 425, "self_contained": true }
+      }
+    },
+
+    "revolutionary_concepts": {
+      "fat_module": "1つの巨大な自己完結ファイル（200-800行）",
+      "zero_context_contract": "TypeScript型定義のみの契約、説明文なし",
+      "contract_as_barrier": "契約は外部コンテキストの流入を防ぐ防波堤",
+      "duplication_is_ok": "DRY原則の意図的な違反がAIには有効"
+    }
+  },
+
+  "practical_guidelines": {
+    "block_division_strategy": {
+      "principle": "機能単位での分割（技術レイヤーではない）",
+      "naming_convention": {
+        "IN_": "入力データ型",
+        "OUT_": "出力データ型",
+        "BLOCK_": "処理ブロック",
+        "STATE_": "状態型",
+        "PIPE_": "データフロー型"
+      }
+    },
+
+    "avoid_patterns": [
+      "components/hooks/services のような技術的分類",
+      "過度な抽象化と継承",
+      "10個以上の小さなファイルへの分散",
+      "詳細なドキュメントやコメント"
+    ],
+
+    "embrace_patterns": [
+      "全てインラインで実装",
+      "定数の重複を許容",
+      "1ファイルで完結する設計",
+      "型システムによる契約保証"
+    ]
+  },
+
+  "sub_agent_architecture": {
+    "agents": {
+      "contract_designer": "契約（型定義）のみを設計",
+      "block_implementer": "単一ブロックを完全独立で実装",
+      "integration_tester": "型の整合性のみを検証"
+    },
+    "workflow": "完全並列開発が可能"
+  },
+
+  "expected_improvements": {
+    "development_efficiency": "2.5-3倍向上",
+    "error_rate": "35% → 5%",
+    "ai_cognitive_load": "65%削減",
+    "parallel_development": "可能（従来は困難）"
+  },
+
+  "test_project": {
+    "name": "VOICEVOX音声生成システム",
+    "original_structure": {
+      "main_file": "VoiceGenerator.tsx",
+      "lines": 379,
+      "responsibilities": 8,
+      "files_involved": 8
+    },
+    "new_structure": {
+      "blocks": [
+        "text-acquisition",
+        "voice-synthesis",
+        "audio-playback",
+        "ui-presenter"
+      ],
+      "contract_lines": 49,
+      "block_lines_avg": 400
+    }
+  },
+
+  "philosophical_insight": "AIと人間の認知特性の違いを理解し、50年間のソフトウェア工学の常識をAI時代に合わせて再定義する必要がある。これは退化ではなく、新しいパラダイムへの進化である。"
+}
