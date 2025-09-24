@@ -17,3 +17,6 @@ pm, workerの起動はあなたの任意に行える。積極的に活用して
 ## 方針概要を把握して
 "方針概要を把握"またはそれに類する依頼があれば、docs/readthis/*.md, docs/save-ai-state/*.jsonを全て参照する。
 
+## 使用可能ツール
+各mcp
+github CLI
