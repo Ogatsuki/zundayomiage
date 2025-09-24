@@ -1,0 +1,67 @@
+# Cloud Run用プロダクション構成
+# ボリュームマウントなし、.envファイル参照なし
+services:
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    container_name: tsd107_voicevox_prod
+    ports:
+      - "50021:50021"
+    networks:
+      - tsd107_network
+    restart: unless-stopped
+    environment:
+      - PORT=50021
+      - VOICEVOX_CPU_NUM_THREADS=4
+      - VOICEVOX_ENGINE_HOST=0.0.0.0
+      - VOICEVOX_ENGINE_PORT=50021
+      - VOICEVOX_CORS_POLICY_MODE=all
+      - VOICEVOX_ALLOW_ORIGIN=*
+    # Cloud Runのヘルスチェック対応
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50021/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nextjs:
+    container_name: tsd107_nextjs_prod
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    # プロダクション環境ではボリュームマウントなし
+    # volumesセクション完全削除
+    environment:
+      - NODE_ENV=production
+      - VOICEVOX_URL=http://voicevox:50021
+      # Cloud Run用環境変数
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    # env_fileセクション削除（.envファイル参照なし）
+    networks:
+      - tsd107_network
+    depends_on:
+      voicevox:
+        condition: service_healthy
+    restart: unless-stopped
+    # Next.jsのヘルスチェック
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  tsd107_network:
+    driver: bridge
+
+# Cloud Run向け追加設定
+# - マルチコンテナサポート
+# - サイドカーコンテナ構成
+# - 内部通信はlocalhost経由
