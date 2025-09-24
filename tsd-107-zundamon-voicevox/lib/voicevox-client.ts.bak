@@ -1,0 +1,128 @@
+import axios, { AxiosInstance } from 'axios'
+import http from 'http'
+import { AudioQuery, ZUNDAMON_SPEAKER_ID, VoicevoxError } from '@/types/voicevox'
+
+class VoicevoxClient {
+  private client: AxiosInstance
+
+  constructor() {
+    const baseURL = process.env.NEXT_PUBLIC_VOICEVOX_URL || 'http://localhost:50021'
+
+    // Create an HTTP agent that forces IPv4
+    const httpAgent = new http.Agent({
+      family: 4, // Force IPv4
+      keepAlive: true,
+    })
+
+    this.client = axios.create({
+      baseURL,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      httpAgent: baseURL.startsWith('http://') ? httpAgent : undefined,
+    })
+
+    // Add response interceptor for error handling
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.code === 'ECONNREFUSED') {
+          const errorMessage = `VOICEVOXエンジンに接続できません。VOICEVOXが起動していることを確認してください。(${baseURL})`
+          console.error(errorMessage)
+          return Promise.reject(new Error(errorMessage))
+        }
+        return Promise.reject(error)
+      }
+    )
+  }
+
+  /**
+   * Generate audio query for text synthesis
+   */
+  async getAudioQuery(text: string, speaker: number = ZUNDAMON_SPEAKER_ID): Promise<AudioQuery> {
+    try {
+      const response = await this.client.post<AudioQuery>(
+        '/audio_query',
+        null,
+        {
+          params: {
+            text,
+            speaker,
+          },
+        }
+      )
+      return response.data
+    } catch (error) {
+      console.error('Failed to get audio query:', error)
+      throw this.handleError(error)
+    }
+  }
+
+  /**
+   * Synthesize speech from audio query
+   */
+  async synthesis(
+    audioQuery: AudioQuery,
+    speaker: number = ZUNDAMON_SPEAKER_ID
+  ): Promise<ArrayBuffer> {
+    try {
+      const response = await this.client.post<ArrayBuffer>(
+        '/synthesis',
+        audioQuery,
+        {
+          params: {
+            speaker,
+          },
+          responseType: 'arraybuffer',
+        }
+      )
+      return response.data
+    } catch (error) {
+      console.error('Failed to synthesize speech:', error)
+      throw this.handleError(error)
+    }
+  }
+
+  /**
+   * Generate speech directly from text (combines audio_query and synthesis)
+   */
+  async generateSpeech(text: string, speaker: number = ZUNDAMON_SPEAKER_ID): Promise<ArrayBuffer> {
+    const audioQuery = await this.getAudioQuery(text, speaker)
+    return await this.synthesis(audioQuery, speaker)
+  }
+
+  /**
+   * Check if VOICEVOX engine is available
+   */
+  async checkHealth(): Promise<boolean> {
+    try {
+      await this.client.get('/version')
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Handle errors uniformly
+   */
+  private handleError(error: unknown): Error {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.data) {
+        const voicevoxError = error.response.data as VoicevoxError
+        return new Error(voicevoxError.message || voicevoxError.error || 'VOICEVOX API error')
+      }
+      if (error.message) {
+        return new Error(error.message)
+      }
+    }
+    return new Error('Unknown error occurred')
+  }
+}
+
+// Export singleton instance
+export const voicevoxClient = new VoicevoxClient()
+
+// Export class for testing or custom instances
+export default VoicevoxClient
