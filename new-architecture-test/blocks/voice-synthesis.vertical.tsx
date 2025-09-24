@@ -450,6 +450,15 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
     return SPEAKERS.find(speaker => speaker.id === id) || SPEAKERS[0];
   }, []);
 
+  // コンポーネントがマウントされたときに自動的に音声合成を開始
+  useEffect(() => {
+    // textが存在し、初回マウント時のみ実行
+    if (text && state === 'IDLE') {
+      handleSynthesize();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 初回マウント時のみ実行
+
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {

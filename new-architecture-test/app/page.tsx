@@ -127,6 +127,7 @@ export default function HomePage() {
       error,
       currentAudio: null,
       synthesisProgress: 0,
+      // currentTextは保持（リトライ時に必要）
     }));
   }, []);
 
@@ -154,13 +155,43 @@ export default function HomePage() {
     }));
   }, []);
 
-  const startSynthesis = useCallback(() => {
-    if (systemState.currentText) {
+  const startSynthesis = useCallback(async () => {
+    if (!systemState.currentText) return;
+
+    // VOICEVOX接続確認を事前に実施
+    try {
+      // 開発環境での動的ポート取得
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const testResponse = await fetch(`${baseUrl}/api/voicevox/audio-query?text=test&speaker=3`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000), // 5秒タイムアウト
+      });
+
+      if (!testResponse.ok) {
+        // 接続エラー時は直接ERROR状態に遷移
+        setSystemState(prev => ({
+          ...prev,
+          app: 'ERROR',
+          error: 'NETWORK_ERROR',
+          synthesisProgress: 0,
+        }));
+        return;
+      }
+
+      // 接続成功時のみSYNTHESIZING状態に遷移
       setSystemState(prev => ({
         ...prev,
         app: 'SYNTHESIZING',
         synthesisProgress: 0,
         error: null,
+      }));
+    } catch (error) {
+      // 接続エラー時
+      setSystemState(prev => ({
+        ...prev,
+        app: 'ERROR',
+        error: 'NETWORK_ERROR',
+        synthesisProgress: 0,
       }));
     }
   }, [systemState.currentText]);
@@ -374,7 +405,8 @@ export default function HomePage() {
           initialText=""
         />
 
-        {systemState.currentText && systemState.app !== 'IDLE' && (
+        {systemState.currentText &&
+         (systemState.app === 'SYNTHESIZING' || systemState.app === 'AUDIO_READY') && (
           <div className="transition-all duration-500 ease-in-out">
             <VoiceSynthesisVertical
               text={systemState.currentText}
