@@ -1,0 +1,49 @@
+services:
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    ports:
+      - "50021:50021"
+    environment:
+      - TZ=Asia/Tokyo
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50021/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - zundayomiage
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VOICEVOX_API_URL=http://voicevox:50021
+      - NEXT_PUBLIC_VOICEVOX_API_URL=http://localhost:50021
+      - NEXT_TELEMETRY_DISABLED=1
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - .:/app:cached
+      - node_modules:/app/node_modules
+      - next_build:/app/.next
+    depends_on:
+      - voicevox
+    networks:
+      - zundayomiage
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  zundayomiage:
+    driver: bridge
+
+volumes:
+  node_modules:
+  next_build:
