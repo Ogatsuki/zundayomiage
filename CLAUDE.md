@@ -14,8 +14,10 @@ tsd-107-zundamon-voicevox:アプリ（アーカイブ）
 new-architecture-test:アプリ（現在作業中）
 tsd-107-spec:仕様書等
 
-## 初回情報セットトップ - 作業前前提情報の取得
-"./docs/save-ai-state/ai-architecture-knowledge-base.json"を参照。ただし既に参照済みの場合は必要無し
+## 初回セットアップ情報
+参照指示: "./docs/state"の全てのファイル
+目的：状態をトレース
+ただし、既に参照済みの場合は必要無し
 
 
 ## コールサイン
@@ -30,21 +32,12 @@ tsd-107-spec:仕様書等
 - 並列実行可能性を判定
 - 品質を定量評価
 
-### Worker mode（実装層）
-Sub Agent起動
-
-### 方針概要を把握して
-"方針概要を把握"またはそれに類する依頼があれば、docs/readthis/*.md, docs/save-ai-state/*.jsonを全て参照する。
-
-## 品質チェックコマンド（プロジェクト非依存）
-```bash
-# .agent-tools/以下のツールを直接使用
-node .agent-tools/quality-checker.js --path [project] --block [name]  # 単一ブロック
-node .agent-tools/quality-checker.js --path [project]                  # 全体チェック
-node .agent-tools/mega-qa.js --path [project]                         # 統合チェック
-
-# package.jsonのscriptに依存しない実装
-```
+### 状態を保存
+"save state": './docs/state'にjsonファイルを保存
+- format: "./docs/state/ai-architecture-knowledge-base.json"を参考に
+- 「状態」とは: 今のあなたの思考状態。AIにトレースさせた時、あなたと同じ思考状態を再現できる情報
+  - ユーザーと議論を重ねて発見したノウハウ（"初回セットアップ情報"以外）
+- 対象情報はユーザーから提供される
 
 ## 使用可能ツール
 plarywright mcp, sequential-thinking mcp, github CLI

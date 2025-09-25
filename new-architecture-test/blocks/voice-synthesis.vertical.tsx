@@ -22,6 +22,7 @@ type RetryableError = ConnectionError;
 interface VoiceSynthesisProps {
   text: ValidText;
   speakerId: SpeakerId;
+  isVisible?: boolean; // 表示/非表示の制御用
   onSynthesisComplete?: (audio: AudioBlob) => void;
   onError?: (error: ErrorCode) => void;
   onProgressUpdate?: (progress: number) => void;
@@ -164,6 +165,7 @@ const splitTextIntoChunks = (text: string, maxChunkSize: number): string[] => {
 const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
   text,
   speakerId,
+  isVisible = true, // デフォルトはtrue（表示）
   onSynthesisComplete,
   onError,
   onProgressUpdate,
@@ -196,6 +198,16 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
     setCurrentSpeaker(speakerId);
   }, [speakerId]);
 
+  // Promise.race()を使ったタイムアウト実装
+  const fetchWithTimeout = (url: string, options: RequestInit, timeout: number) => {
+    return Promise.race([
+      fetch(url, options),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT_ERROR')), timeout)
+      )
+    ]);
+  };
+
   const createAudioQuery = async (
     text: string,
     speakerId: SpeakerId,
@@ -204,7 +216,7 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
     const voicevoxUrl = getVoicevoxUrl();
 
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${voicevoxUrl}/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`,
         {
           method: 'POST',
@@ -212,8 +224,8 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
           headers: {
             'Content-Type': 'application/json',
           },
-          // タイムアウトを30秒に設定
-        }
+        },
+        30000 // 30秒でタイムアウト
       );
 
       if (!response.ok) {
@@ -232,6 +244,9 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
         throw new Error('TIMEOUT_ERROR');
       }
       if (error instanceof Error) {
+        if (error.message.includes('TIMEOUT_ERROR')) {
+          throw new Error('TIMEOUT_ERROR');
+        }
         if (error.message.includes('fetch') || error.message.includes('ECONNREFUSED')) {
           throw new Error('VOICEVOX_NOT_RUNNING');
         }
@@ -259,7 +274,7 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
     const voicevoxUrl = getVoicevoxUrl();
 
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${voicevoxUrl}/synthesis?speaker=${speakerId}`,
         {
           method: 'POST',
@@ -268,7 +283,8 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
           },
           body: JSON.stringify(modifiedQuery),
           signal
-        }
+        },
+        30000 // 30秒でタイムアウト
       );
 
       if (!response.ok) {
@@ -287,6 +303,9 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
         throw new Error('TIMEOUT_ERROR');
       }
       if (error instanceof Error) {
+        if (error.message.includes('TIMEOUT_ERROR')) {
+          throw new Error('TIMEOUT_ERROR');
+        }
         if (error.message.includes('fetch') || error.message.includes('ECONNREFUSED')) {
           throw new Error('VOICEVOX_NOT_RUNNING');
         }
@@ -399,10 +418,9 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
       onSynthesisComplete?.(audioBlob);
 
     } catch (error) {
-      console.error('Voice synthesis error:', error);
-      setState('FAILED');
-
       const errorMessage = (error as Error).message;
+      console.error('Voice synthesis error:', errorMessage);
+      setState('FAILED');
       let errorCode: ErrorCode;
       let message: string;
       let isRetryable: boolean;
@@ -503,22 +521,36 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
     return SPEAKERS.find(speaker => speaker.id === id) || SPEAKERS[0];
   }, []);
 
-  // コンポーネントがマウントされたときに自動的に音声合成を開始
+  // 自動音声合成（安全なバージョン）
+  // isVisibleがtrueに変わったときのみ、1回だけ実行
+  const hasStartedRef = useRef(false);
   useEffect(() => {
-    // textが存在し、初回マウント時のみ実行
-    if (text && state === 'IDLE') {
+    if (isVisible && text && state === 'IDLE' && !hasStartedRef.current) {
+      hasStartedRef.current = true;
       handleSynthesize();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 初回マウント時のみ実行
+    if (!isVisible) {
+      hasStartedRef.current = false; // リセット
+    }
+  }, [isVisible, text, state, handleSynthesize]);
 
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
+      // isVisibleがfalseの場合はAbortしない（再マウント問題を防ぐ）
+      if (abortControllerRef.current && !isVisible) {
+        // 非表示時はAbortSignalを発火しない
+        // 処理中のリクエストは継続させる
+      } else if (abortControllerRef.current && state === 'IDLE') {
+        // IDLEステートの時のみAbort（コンポーネント破棄時）
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [isVisible, state]);
+
+  // 非表示時は何もレンダリングしない（軽量化）
+  if (!isVisible) {
+    return null;
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -660,18 +692,7 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => handleSynthesize()}
-            disabled={!text || state === 'SYNTHESIZING'}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              !text || state === 'SYNTHESIZING'
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {state === 'SYNTHESIZING' ? '合成中...' : '音声合成開始'}
-          </button>
-
+          {/* 音声合成ボタンは外部制御のため非表示 */}
           {state === 'SYNTHESIZING' && (
             <button
               onClick={handleStop}

@@ -588,22 +588,31 @@ const UIOrchestrator: React.FC = () => {
         </div>
 
         {/* Step 2: 音声合成 */}
-        {systemState.currentText && (systemState.app === 'SYNTHESIZING' || systemState.app === 'AUDIO_READY') && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-white/30 shadow-lg transition-all duration-500 ease-in-out">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <span className="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
-              音声合成
-            </h2>
-            <VoiceSynthesisVertical
-              text={systemState.currentText}
-              speakerId={systemState.selectedSpeaker}
-              onSynthesisComplete={handleSynthesisComplete}
-              onError={handleSynthesisError}
-              onProgressUpdate={handleSynthesisProgress}
-              onRetry={retryCurrentOperation}
-            />
-          </div>
-        )}
+        <div
+          className={`bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-white/30 shadow-lg transition-all duration-500 ease-in-out ${
+            systemState.currentText && (systemState.app === 'SYNTHESIZING' || systemState.app === 'AUDIO_READY')
+              ? 'opacity-100'
+              : 'opacity-0 pointer-events-none h-0 overflow-hidden p-0'
+          }`}
+        >
+          {systemState.currentText && (
+            <>
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <span className="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
+                音声合成
+              </h2>
+              <VoiceSynthesisVertical
+                text={systemState.currentText}
+                speakerId={systemState.selectedSpeaker}
+                isVisible={systemState.app === 'SYNTHESIZING' || systemState.app === 'AUDIO_READY'}
+                onSynthesisComplete={handleSynthesisComplete}
+                onError={handleSynthesisError}
+                onProgressUpdate={handleSynthesisProgress}
+                onRetry={retryCurrentOperation}
+              />
+            </>
+          )}
+        </div>
 
         {/* Step 3: 音声再生 */}
         {systemState.currentAudio && (
