@@ -101,6 +101,12 @@ export default function VoiceSynthesisPage() {
   const handleSynthesize = useCallback(async () => {
     if (!isTextValid || !text.trim() || isSynthesizing) return;
 
+    // Check VOICEVOX connection before synthesis
+    if (!isConnected) {
+      setError('VOICEVOXサーバーに接続できません。localhost:50021でVOICEVOXが起動していることを確認してください。');
+      return;
+    }
+
     setIsSynthesizing(true);
     setError(null);
 
@@ -123,11 +129,16 @@ export default function VoiceSynthesisPage() {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : '音声合成に失敗しました');
+      const errorMessage = err instanceof Error ? err.message : '音声合成に失敗しました';
+      if (errorMessage.includes('connect') || errorMessage.includes('Connection') || errorMessage.includes('接続')) {
+        setError('VOICEVOXサーバーとの接続が切断されました。サーバーが起動していることを確認してください。');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsSynthesizing(false);
     }
-  }, [text, isTextValid, selectedCharacter, voiceParams, isSynthesizing]);
+  }, [text, isTextValid, selectedCharacter, voiceParams, isSynthesizing, isConnected]);
 
   // Cancel synthesis
   const handleCancelSynthesis = useCallback(() => {
@@ -217,9 +228,9 @@ export default function VoiceSynthesisPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={handleSynthesize}
-                  disabled={!isTextValid || isSynthesizing || !isConnected}
+                  disabled={!isTextValid || isSynthesizing}
                   className={`flex-1 py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
-                    !isTextValid || isSynthesizing || !isConnected
+                    !isTextValid || isSynthesizing
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                   }`}
