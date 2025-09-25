@@ -219,5 +219,11 @@
       "Bash(dir:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "playwright",
+    "supabase"
+  ]
 }
