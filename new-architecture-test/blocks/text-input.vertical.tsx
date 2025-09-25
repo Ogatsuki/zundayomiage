@@ -6,9 +6,9 @@ import { createWorker, Worker } from 'tesseract.js';
 const TEXT_LIMIT = 100_000;
 
 type TextInputState = 'IDLE' | 'PROCESSING' | 'READY' | 'ERROR';
-type ErrorCode = 'TEXT_TOO_LONG' | 'NETWORK_ERROR' | 'API_ERROR' | 'INVALID_AUDIO' | 'OCR_FAILED';
+type ErrorCode = 'TEXT_TOO_LONG' | 'VOICEVOX_NOT_RUNNING' | 'NETWORK_CONNECTION' | 'TIMEOUT_ERROR' | 'SYNTHESIS_ERROR' | 'INVALID_AUDIO' | 'OCR_FAILED' | 'PLAYBACK_FAILED' | 'AUDIO_CONTEXT_FAILED';
 type ValidText = string & { __brand: 'ValidText' };
-type RetryableError = 'NETWORK_ERROR' | 'API_ERROR' | 'OCR_FAILED';
+type RetryableError = 'VOICEVOX_NOT_RUNNING' | 'NETWORK_CONNECTION' | 'OCR_FAILED';
 
 interface TextInputProps {
   onTextReady?: (text: ValidText) => void;

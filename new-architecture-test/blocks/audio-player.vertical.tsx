@@ -3,9 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 type AudioPlayerState = 'IDLE' | 'LOADING' | 'PLAYING' | 'PAUSED' | 'ERROR';
-type ErrorCode = 'TEXT_TOO_LONG' | 'NETWORK_ERROR' | 'API_ERROR' | 'INVALID_AUDIO' | 'PLAYBACK_FAILED' | 'AUDIO_CONTEXT_FAILED';
+type ErrorCode = 'TEXT_TOO_LONG' | 'VOICEVOX_NOT_RUNNING' | 'NETWORK_CONNECTION' | 'TIMEOUT_ERROR' | 'SYNTHESIS_ERROR' | 'INVALID_AUDIO' | 'OCR_FAILED' | 'PLAYBACK_FAILED' | 'AUDIO_CONTEXT_FAILED';
 type AudioBlob = Blob & { __brand: 'AudioBlob' };
-type RetryableError = 'NETWORK_ERROR' | 'API_ERROR' | 'PLAYBACK_FAILED' | 'AUDIO_CONTEXT_FAILED';
+type RetryableError = 'VOICEVOX_NOT_RUNNING' | 'NETWORK_CONNECTION' | 'PLAYBACK_FAILED' | 'AUDIO_CONTEXT_FAILED';
 
 interface AudioPlayerProps {
   audioBlob?: AudioBlob;
@@ -350,13 +350,13 @@ const AudioPlayerVertical: React.FC<AudioPlayerProps> = ({
     } catch (error) {
       console.error('Download failed:', error);
       const errorState: ErrorState = {
-        code: 'API_ERROR',
+        code: 'NETWORK_CONNECTION',
         message: 'ファイルのダウンロードに失敗しました。ブラウザの設定を確認してください。',
         isRetryable: false,
         retryCount: 0
       };
       setErrorState(errorState);
-      onError?.('API_ERROR' as ErrorCode);
+      onError?.('NETWORK_CONNECTION');
     }
   }, [onError]);
 

@@ -1,26 +1,21 @@
 {
-  "timestamp": "2025-09-25T02:25:12.216Z",
+  "timestamp": "2025-09-25T09:44:26.566Z",
   "checks": [
     {
       "name": "TypeScript",
       "status": "pass"
     },
     {
-      "name": "BlockIndependence",
-      "status": "pass"
-    },
-    {
-      "name": "BlockSize",
-      "status": "warning",
-      "lines": 690,
-      "recommendation": "Consider splitting into smaller blocks"
-    },
-    {
       "name": "ContractCompliance",
       "status": "pass",
-      "contractCount": 3
+      "contractCount": 4
+    },
+    {
+      "name": "Syntax",
+      "status": "warning",
+      "debugStatements": 2
     }
   ],
-  "score": 75,
-  "passed": true
+  "score": 67,
+  "passed": false
 }

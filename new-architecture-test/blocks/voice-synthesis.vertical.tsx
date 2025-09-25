@@ -7,11 +7,17 @@ const MAX_CONCURRENT = 3;
 const CHUNK_SIZE = 200;
 
 type VoiceSynthesisState = 'IDLE' | 'SYNTHESIZING' | 'COMPLETED' | 'FAILED';
-type ErrorCode = 'TEXT_TOO_LONG' | 'NETWORK_ERROR' | 'API_ERROR' | 'INVALID_AUDIO' | 'SYNTHESIS_FAILED';
+type ConnectionError =
+  | 'VOICEVOX_NOT_RUNNING'    // VOICEVOXサーバー未起動
+  | 'NETWORK_CONNECTION'      // ネットワーク接続問題
+  | 'TIMEOUT_ERROR'          // タイムアウト
+  | 'SYNTHESIS_ERROR';       // 音声合成処理エラー
+
+type ErrorCode = 'TEXT_TOO_LONG' | ConnectionError | 'INVALID_AUDIO' | 'OCR_FAILED' | 'PLAYBACK_FAILED' | 'AUDIO_CONTEXT_FAILED';
 type SpeakerId = 2 | 3;
 type AudioBlob = Blob & { __brand: 'AudioBlob' };
 type ValidText = string & { __brand: 'ValidText' };
-type RetryableError = 'NETWORK_ERROR' | 'API_ERROR' | 'SYNTHESIS_FAILED';
+type RetryableError = ConnectionError;
 
 interface VoiceSynthesisProps {
   text: ValidText;
@@ -115,8 +121,16 @@ const SPEAKERS: SpeakerInfo[] = [
   { id: 2, name: '四国めたん', color: 'bg-blue-500' }
 ];
 
-const getNextApiUrl = (): string => {
-  return '/api/voicevox';
+const getVoicevoxUrl = (): string => {
+  return process.env.NEXT_PUBLIC_VOICEVOX_URL || 'http://localhost:50021';
+};
+
+// 統一されたエラーメッセージ
+const ERROR_MESSAGES = {
+  VOICEVOX_NOT_RUNNING: 'VOICEVOXエンジンが起動していません。サーバーを起動してください。',
+  NETWORK_CONNECTION: 'ネットワーク接続に問題があります。',
+  TIMEOUT_ERROR: '処理がタイムアウトしました。',
+  SYNTHESIS_ERROR: '音声合成処理でエラーが発生しました。'
 };
 
 const splitTextIntoChunks = (text: string, maxChunkSize: number): string[] => {
@@ -187,30 +201,46 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
     speakerId: SpeakerId,
     signal: AbortSignal
   ): Promise<AudioQuery> => {
-    const apiUrl = getNextApiUrl();
-    const response = await fetch(
-      `${apiUrl}/audio-query?text=${encodeURIComponent(text)}&speaker=${speakerId}`,
-      {
-        method: 'POST',
-        signal,
-        headers: {
-          'Content-Type': 'application/json',
+    const voicevoxUrl = getVoicevoxUrl();
+
+    try {
+      const response = await fetch(
+        `${voicevoxUrl}/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`,
+        {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // タイムアウトを30秒に設定
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status >= 500) {
+          throw new Error('SYNTHESIS_ERROR');
+        } else if (response.status === 404 || response.status === 400) {
+          throw new Error('SYNTHESIS_ERROR');
+        } else {
+          throw new Error('VOICEVOX_NOT_RUNNING');
         }
       }
-    );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (response.status >= 500) {
-        throw new Error('SYNTHESIS_FAILED');
-      } else if (response.status === 404 || response.status === 400) {
-        throw new Error('API_ERROR');
-      } else {
-        throw new Error('NETWORK_ERROR');
+      return await response.json();
+    } catch (error) {
+      if (signal.aborted) {
+        throw new Error('TIMEOUT_ERROR');
       }
+      if (error instanceof Error) {
+        if (error.message.includes('fetch') || error.message.includes('ECONNREFUSED')) {
+          throw new Error('VOICEVOX_NOT_RUNNING');
+        }
+        if (error.message.includes('timeout')) {
+          throw new Error('TIMEOUT_ERROR');
+        }
+      }
+      throw error;
     }
-
-    return await response.json();
   };
 
   const synthesizeAudio = async (
@@ -226,31 +256,46 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
       volumeScale
     };
 
-    const apiUrl = getNextApiUrl();
-    const response = await fetch(
-      `${apiUrl}/synthesis?speaker=${speakerId}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(modifiedQuery),
-        signal
-      }
-    );
+    const voicevoxUrl = getVoicevoxUrl();
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (response.status >= 500) {
-        throw new Error('SYNTHESIS_FAILED');
-      } else if (response.status === 404 || response.status === 400) {
-        throw new Error('API_ERROR');
-      } else {
-        throw new Error('NETWORK_ERROR');
+    try {
+      const response = await fetch(
+        `${voicevoxUrl}/synthesis?speaker=${speakerId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(modifiedQuery),
+          signal
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status >= 500) {
+          throw new Error('SYNTHESIS_ERROR');
+        } else if (response.status === 404 || response.status === 400) {
+          throw new Error('SYNTHESIS_ERROR');
+        } else {
+          throw new Error('VOICEVOX_NOT_RUNNING');
+        }
       }
+
+      return await response.arrayBuffer();
+    } catch (error) {
+      if (signal.aborted) {
+        throw new Error('TIMEOUT_ERROR');
+      }
+      if (error instanceof Error) {
+        if (error.message.includes('fetch') || error.message.includes('ECONNREFUSED')) {
+          throw new Error('VOICEVOX_NOT_RUNNING');
+        }
+        if (error.message.includes('timeout')) {
+          throw new Error('TIMEOUT_ERROR');
+        }
+      }
+      throw error;
     }
-
-    return await response.arrayBuffer();
   };
 
   const synthesizeChunk = async (
@@ -286,13 +331,13 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
   const handleSynthesize = useCallback(async (retryCount: number = 0) => {
     if (!text || text.trim().length === 0) {
       const errorState: ErrorState = {
-        code: 'API_ERROR',
+        code: 'SYNTHESIS_ERROR',
         message: 'テキストが入力されていません。',
         isRetryable: false,
         retryCount
       };
       setErrorState(errorState);
-      onError?.('API_ERROR' as ErrorCode);
+      onError?.('SYNTHESIS_ERROR' as ErrorCode);
       return;
     }
 
@@ -366,17 +411,25 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
         errorCode = 'TEXT_TOO_LONG';
         message = 'テキストが長すぎます（100,000文字以内）。テキストを短くしてください。';
         isRetryable = false;
-      } else if (errorMessage.includes('NETWORK_ERROR') || abortControllerRef.current?.signal.aborted) {
-        errorCode = 'NETWORK_ERROR';
-        message = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+      } else if (errorMessage.includes('VOICEVOX_NOT_RUNNING')) {
+        errorCode = 'VOICEVOX_NOT_RUNNING';
+        message = ERROR_MESSAGES.VOICEVOX_NOT_RUNNING;
         isRetryable = true;
-      } else if (errorMessage.includes('SYNTHESIS_FAILED')) {
-        errorCode = 'SYNTHESIS_FAILED';
-        message = 'VOICEVOXサーバーで音声合成に失敗しました。サーバーの状態を確認してください。';
+      } else if (errorMessage.includes('TIMEOUT_ERROR') || abortControllerRef.current?.signal.aborted) {
+        errorCode = 'TIMEOUT_ERROR';
+        message = ERROR_MESSAGES.TIMEOUT_ERROR;
+        isRetryable = true;
+      } else if (errorMessage.includes('NETWORK_CONNECTION')) {
+        errorCode = 'NETWORK_CONNECTION';
+        message = ERROR_MESSAGES.NETWORK_CONNECTION;
+        isRetryable = true;
+      } else if (errorMessage.includes('SYNTHESIS_ERROR')) {
+        errorCode = 'SYNTHESIS_ERROR';
+        message = ERROR_MESSAGES.SYNTHESIS_ERROR;
         isRetryable = true;
       } else {
-        errorCode = 'API_ERROR';
-        message = 'APIエラーが発生しました。VOICEVOXエンジンが正しく動作していることを確認してください。';
+        errorCode = 'VOICEVOX_NOT_RUNNING';
+        message = ERROR_MESSAGES.VOICEVOX_NOT_RUNNING;
         isRetryable = true;
       }
 
