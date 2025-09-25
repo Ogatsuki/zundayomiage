@@ -1,26 +1,23 @@
 {
-  "timestamp": "2025-09-25T10:38:02.707Z",
+  "timestamp": "2025-09-25T13:51:04.380Z",
   "checks": [
     {
       "name": "TypeScript",
-      "status": "pass"
-    },
-    {
-      "name": "BlockIndependence",
-      "status": "pass"
-    },
-    {
-      "name": "BlockSize",
-      "status": "warning",
-      "lines": 764,
-      "recommendation": "Consider splitting into smaller blocks"
+      "status": "fail",
+      "errors": 0,
+      "sample": "\n\u001b[41m                                                                               \u001b[0m\n\u001b[41m\u001b[37m                This is not the tsc command you are looking for                \u001b[0m"
     },
     {
       "name": "ContractCompliance",
-      "status": "pass",
-      "contractCount": 4
+      "status": "warning",
+      "message": "No contract files found"
+    },
+    {
+      "name": "Syntax",
+      "status": "warning",
+      "debugStatements": 1
     }
   ],
-  "score": 75,
-  "passed": true
+  "score": 0,
+  "passed": false
 }
