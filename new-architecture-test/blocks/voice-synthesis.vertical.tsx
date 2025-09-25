@@ -608,7 +608,7 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <button
-            onClick={handleSynthesize}
+            onClick={() => handleSynthesize()}
             disabled={!text || state === 'SYNTHESIZING'}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               !text || state === 'SYNTHESIZING'
@@ -663,15 +663,10 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
               {errorState.isRetryable && (
                 <div className="mt-3 flex space-x-2">
                   <button
-                    onClick={retryLastSynthesis}
-                    disabled={state === 'SYNTHESIZING'}
-                    className={`px-4 py-2 text-sm rounded font-medium transition-colors ${
-                      state === 'SYNTHESIZING'
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    onClick={() => retryLastSynthesis()}
+                    className="px-4 py-2 text-sm rounded font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
                   >
-                    {state === 'SYNTHESIZING' ? '合成中...' : '再試行'}
+                    再試行
                   </button>
                   <button
                     onClick={() => {

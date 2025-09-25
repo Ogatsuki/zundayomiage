@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "block-check": "node scripts/block-check.js",
+    "quality-check": "npm run type-check && npm run block-check"
   },
   "dependencies": {
     "next": "^14.0.0",

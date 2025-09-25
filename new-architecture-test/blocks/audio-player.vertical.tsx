@@ -525,7 +525,7 @@ const AudioPlayerVertical: React.FC<AudioPlayerProps> = ({
             </button>
 
             <button
-              onClick={state === 'PLAYING' ? pause : play}
+              onClick={() => (state === 'PLAYING' ? pause() : play())}
               disabled={state === 'LOADING' || state === 'ERROR'}
               className={`p-3 rounded-full text-2xl ${
                 state === 'LOADING' || state === 'ERROR'
@@ -610,15 +610,10 @@ const AudioPlayerVertical: React.FC<AudioPlayerProps> = ({
               {errorState.isRetryable && (
                 <div className="mt-3 flex space-x-2">
                   <button
-                    onClick={retryLastAction}
-                    disabled={state === 'LOADING'}
-                    className={`px-4 py-2 text-sm rounded font-medium transition-colors ${
-                      state === 'LOADING'
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    onClick={() => retryLastAction()}
+                    className="px-4 py-2 text-sm rounded font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
                   >
-                    {state === 'LOADING' ? '処理中...' : '再試行'}
+                    再試行
                   </button>
                   <button
                     onClick={() => {
