@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-09-25T18:28:56.847Z",
+  "checks": [
+    {
+      "name": "TypeScript",
+      "status": "pass"
+    },
+    {
+      "name": "ContractCompliance",
+      "status": "warning",
+      "message": "No contract files found"
+    },
+    {
+      "name": "Syntax",
+      "status": "warning",
+      "debugStatements": 3
+    }
+  ],
+  "score": 33,
+  "passed": false
+}

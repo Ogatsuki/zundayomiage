@@ -117,7 +117,8 @@ class MegaQA {
     return this.runPhase('Phase 1: 静的解析', [
       {
         name: 'TypeScript型チェック',
-        command: 'npx tsc --noEmit'
+        command: 'npx tsc --noEmit',
+        cwd: this.projectPath  // cwdを明示的に指定
       },
       {
         name: 'ESLint',
@@ -126,7 +127,8 @@ class MegaQA {
       },
       {
         name: 'ブロック独立性',
-        command: `node ${path.join(__dirname, 'quality-checker.js')} --path ${this.projectPath}`
+        command: `node "${path.join(__dirname, 'quality-checker.js')}" --path "${this.projectPath}"`,  // パスを引用符で囲む
+        cwd: process.cwd()  // 現在のディレクトリから実行
       }
     ]);
   }

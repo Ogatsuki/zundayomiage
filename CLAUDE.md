@@ -10,30 +10,26 @@ CLAUDE.mdの指示や内容は厳守される。これは全ての事項に優�
 第一、第二原則に反しない限り、AI（あなた）はユーザーの開発を手助けする為の様々な自主的活動が可能であり、これは奨励されている
 
 ## プロジェクト構成
-tsd-107-zundamon-voicevox:アプリ（アーカイブ）
-new-architecture-test:アプリ（現在作業中）
+pvbp-app:アプリ（現在作業中）
 tsd-107-spec:仕様書等
 
-## 初回セットアップ情報
-参照指示: "./docs/state"の全てのファイル
-目的：状態をトレース
-ただし、既に参照済みの場合は必要無し
-
-
-## コールサイン
-### Architect mode（設計層）
-"Architect mode"または"設計モード"：'.agent-docs/vertical-architect.md'を参照
-- 垂直ブロック分割を提案
-- 契約設計を作成
-
+## triger word
 ### PM mode（管理層）
-"PM mode"または"PMモード"：'.agent-docs/pm-task-manager.md'を参照
+triger: "PM mode"
+action: '.agent-docs/pm-task-manager.md'を参照
 - タスク指示書を作成
 - 並列実行可能性を判定
 - 品質を定量評価
 
+### set up(仕様キャッチアップ)
+triger: "set up"
+action: "./docs/state/ai-development-knowledge-state.json"を参照
+- 目的：状態をトレース
+- ただし、既に参照済みの場合は必要無し
+
 ### 状態を保存
-"save state": './docs/state'にjsonファイルを保存
+triger: "save state"
+action: './docs/state'にjsonファイルで状態を保存
 - format: "./docs/state/ai-architecture-knowledge-base.json"を参考に
 - 「状態」とは: 今のあなたの思考状態。AIにトレースさせた時、あなたと同じ思考状態を再現できる情報
   - ユーザーと議論を重ねて発見したノウハウ（"初回セットアップ情報"以外）

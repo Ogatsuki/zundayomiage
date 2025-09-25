@@ -441,7 +441,6 @@ const VoiceSynthesisVertical: React.FC<VoiceSynthesisProps> = ({
 
     } catch (error) {
       const errorMessage = (error as Error).message;
-      console.error('Voice synthesis error:', errorMessage);
 
       // PVBP Pattern: Only set error state if still mounted
       if (!isMounted.current) return;

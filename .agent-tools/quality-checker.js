@@ -98,9 +98,28 @@ class QualityChecker {
 
     this.log(`ブロック独立性チェック: ${this.blockName}`, 'check');
 
-    const blockPath = path.join(this.targetPath, 'blocks', `${this.blockName}.vertical.tsx`);
+    // PVBPプロトコル対応: [feature].[runtime].vertical.tsx パターンを探す
+    const blocksDir = path.join(this.targetPath, 'blocks');
+    let blockPath = null;
 
-    if (!fs.existsSync(blockPath)) {
+    if (fs.existsSync(blocksDir)) {
+      const files = fs.readdirSync(blocksDir);
+      // 完全一致を優先
+      const exactMatch = files.find(f => f === `${this.blockName}.tsx`);
+      if (exactMatch) {
+        blockPath = path.join(blocksDir, exactMatch);
+      } else {
+        // パターンマッチング: blockNameで始まり.vertical.tsxで終わる
+        const patternMatch = files.find(f =>
+          f.startsWith(this.blockName) && f.endsWith('.vertical.tsx')
+        );
+        if (patternMatch) {
+          blockPath = path.join(blocksDir, patternMatch);
+        }
+      }
+    }
+
+    if (!blockPath || !fs.existsSync(blockPath)) {
       this.results.checks.push({
         name: 'BlockIndependence',
         status: 'skip',
@@ -170,9 +189,14 @@ class QualityChecker {
       return;
     }
 
-    // 契約ファイルの存在確認
+    // 契約ファイルの存在確認 - PVBPでは -contract.ts パターンも含む
     const contractFiles = fs.readdirSync(contractsDir)
-      .filter(f => f.endsWith('.contract.ts') || f.endsWith('.contracts.ts'));
+      .filter(f =>
+        f.endsWith('-contract.ts') ||
+        f.endsWith('.contract.ts') ||
+        f.endsWith('.contracts.ts') ||
+        f.endsWith('contract.ts')
+      );
 
     if (contractFiles.length === 0) {
       this.results.checks.push({
@@ -197,39 +221,77 @@ class QualityChecker {
   async checkSyntax() {
     this.log('構文チェック', 'check');
 
-    if (!this.blockName) {
-      // 全体をチェック
-      const jsFiles = this.findFiles('**/*.{js,jsx,ts,tsx}');
-      let errorCount = 0;
+    // 全体をチェック（blocksとappディレクトリ両方）
+    const targetDirs = ['blocks', 'app'].map(d => path.join(this.targetPath, d));
+    let errorCount = 0;
+    let checkedFiles = 0;
 
-      for (const file of jsFiles.slice(0, 10)) { // 最初の10ファイルのみ
+    for (const dir of targetDirs) {
+      if (!fs.existsSync(dir)) continue;
+
+      const files = this.findFilesInDir(dir, ['.ts', '.tsx', '.js', '.jsx']);
+      for (const file of files) {
         try {
           const content = fs.readFileSync(file, 'utf8');
-          // 基本的な構文エラーをチェック
-          if (content.includes('console.log(') && !content.includes('// eslint-disable')) {
-            errorCount++;
+          // console文の検出（console.log, console.error, console.warn等）
+          const consolePattern = /console\.(log|error|warn|info|debug|trace)\s*\(/g;
+          const matches = content.match(consolePattern);
+          if (matches && !content.includes('// eslint-disable')) {
+            errorCount += matches.length;
           }
+          checkedFiles++;
         } catch (error) {
           // ファイル読み込みエラーは無視
         }
       }
+    }
 
-      this.results.checks.push({
-        name: 'Syntax',
-        status: errorCount > 0 ? 'warning' : 'pass',
-        debugStatements: errorCount
-      });
+    this.results.checks.push({
+      name: 'Syntax',
+      status: errorCount > 0 ? 'warning' : 'pass',
+      debugStatements: errorCount
+    });
 
-      if (errorCount > 0) {
-        this.log(`  デバッグ文: ${errorCount}件`, 'warning');
-      } else {
-        this.log('  デバッグ文: なし', 'success');
-      }
+    if (errorCount > 0) {
+      this.log(`  デバッグ文: ${errorCount}件`, 'warning');
+    } else {
+      this.log('  デバッグ文: なし', 'success');
     }
   }
 
   /**
-   * ファイル検索ヘルパー
+   * ディレクトリ内のファイル検索ヘルパー
+   */
+  findFilesInDir(dir, extensions = []) {
+    const files = [];
+    const searchDir = (currentDir) => {
+      try {
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(currentDir, entry.name);
+          if (entry.isDirectory() &&
+              !entry.name.startsWith('.') &&
+              entry.name !== 'node_modules' &&
+              entry.name !== 'dist' &&
+              entry.name !== 'build' &&
+              entry.name !== '.next') {
+            searchDir(fullPath);
+          } else if (entry.isFile() &&
+                     (extensions.length === 0 ||
+                      extensions.some(ext => entry.name.endsWith(ext)))) {
+            files.push(fullPath);
+          }
+        }
+      } catch (error) {
+        // ディレクトリ読み込みエラーは無視
+      }
+    };
+    searchDir(dir);
+    return files;
+  }
+
+  /**
+   * ファイル検索ヘルパー（後方互換性のため維持）
    */
   findFiles(pattern) {
     const files = [];

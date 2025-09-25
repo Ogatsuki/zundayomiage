@@ -498,7 +498,7 @@ const AudioPlayerUniversal: React.FC<{
       audio.src = url;
 
       if (autoPlay) {
-        audio.play().catch(console.error);
+        audio.play().catch(() => {});
         setIsPlaying(true);
       }
 
@@ -597,7 +597,6 @@ const UIOrchestrator: React.FC = () => {
         setConnectionStatus('disconnected');
       }
     } catch (error) {
-      console.warn('VOICEVOX connection check failed:', error);
       setConnectionStatus('disconnected');
     }
   }, [isClient]);

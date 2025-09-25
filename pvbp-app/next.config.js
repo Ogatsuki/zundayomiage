@@ -21,11 +21,8 @@ const nextConfig = {
     }
     return config;
   },
-  // PVBP-specific configuration
-  experimental: {
-    // Enable strict mode for better PVBP pattern testing
-    reactStrictMode: true,
-  },
+  // Enable strict mode for better PVBP pattern testing
+  reactStrictMode: true,
 };
 
 module.exports = nextConfig;

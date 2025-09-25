@@ -6,7 +6,7 @@ services:
     environment:
       - TZ=Asia/Tokyo
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:50021/version"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:50021/version"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3001:3000"  # 3001を使用してnew-architecture-testと競合回避
+      - "3000:3000"
     environment:
       - NODE_ENV=development
       - VOICEVOX_API_URL=http://voicevox:50021

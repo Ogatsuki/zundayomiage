@@ -1,23 +1,35 @@
 {
-  "timestamp": "2025-09-25T13:51:04.380Z",
+  "timestamp": "2025-09-25T18:38:14.371Z",
   "checks": [
     {
       "name": "TypeScript",
+      "status": "pass"
+    },
+    {
+      "name": "BlockIndependence",
       "status": "fail",
-      "errors": 0,
-      "sample": "\n\u001b[41m                                                                               \u001b[0m\n\u001b[41m\u001b[37m                This is not the tsc command you are looking for                \u001b[0m"
+      "violations": 1,
+      "details": [
+        "import { Character, CharacterContract, VOICEVOX_CHARACTERS } from '../contracts/character-contract';\r"
+      ]
+    },
+    {
+      "name": "BlockSize",
+      "status": "pass",
+      "lines": 366,
+      "recommendation": "Good"
     },
     {
       "name": "ContractCompliance",
-      "status": "warning",
-      "message": "No contract files found"
+      "status": "pass",
+      "contractCount": 7
     },
     {
       "name": "Syntax",
       "status": "warning",
-      "debugStatements": 1
+      "debugStatements": 5
     }
   ],
-  "score": 0,
+  "score": 40,
   "passed": false
 }
