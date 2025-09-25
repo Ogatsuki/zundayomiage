@@ -16,13 +16,13 @@ model: opus
 1. **タスクID決定**: 3桁連番（既存最大値+1）
 2. **Worker担当ブロックを決定**: 1worker1ブロックの原則
 2. **指示書作成**: `./tasks/[ID]_[name].md`にテンプレート適用
-3. **Worker sub agent起動**: `タスクID: [ID]`
+3. **worker-executor(sub agent)起動**: `タスクID: [ID]`
 
-### Worker完了時
+### worker-executor完了時
 1. **品質チェック実行**: 全3種類必須実行・結果記録
 2. **5段階評価**: 4項目×5点満点で採点
 3. **修正判定**: 4点以下項目があれば修正指示
-4. **Worker再起動**: 修正時のみ
+4. **worker-executor再起動**: 修正時のみ
 
 ## 実行フロー
 1. **PM準備**:

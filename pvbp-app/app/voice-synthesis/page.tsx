@@ -90,13 +90,11 @@ export default function VoiceSynthesisPage() {
   // Handle character selection
   const handleCharacterChange = useCallback((character: Character) => {
     setSelectedCharacter(character);
-    console.log('Selected character:', character.displayName);
   }, []);
 
   // Handle parameter change
   const handleParameterChange = useCallback((params: any) => {
     setVoiceParams(params.getApiParameters());
-    console.log('Voice parameters updated:', params.getApiParameters());
   }, []);
 
   // Synthesize voice
@@ -110,12 +108,6 @@ export default function VoiceSynthesisPage() {
       if (!voicevoxApiRef.current) {
         throw new Error('VOICEVOX APIが初期化されていません');
       }
-
-      console.log('Starting synthesis with:', {
-        text: text.substring(0, 50) + '...',
-        character: selectedCharacter.displayName,
-        params: voiceParams
-      });
 
       const blob = await voicevoxApiRef.current.synthesize(
         text,
@@ -131,7 +123,6 @@ export default function VoiceSynthesisPage() {
       }
 
     } catch (err) {
-      console.error('Synthesis error:', err);
       setError(err instanceof Error ? err.message : '音声合成に失敗しました');
     } finally {
       setIsSynthesizing(false);

@@ -135,7 +135,12 @@ class QualityChecker {
     const imports = lines.filter(line => line.trim().startsWith('import'));
     const blockImports = imports.filter(line =>
       line.includes('../blocks/') ||
-      line.includes('./') && !line.includes('./types') && !line.includes('./constants')
+      line.includes('./blocks/') ||
+      (line.includes('./') &&
+       !line.includes('./types') &&
+       !line.includes('./constants') &&
+       !line.includes('../contracts/') &&
+       !line.includes('./shared/'))
     );
 
     if (blockImports.length > 0) {

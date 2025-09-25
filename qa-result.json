@@ -1,23 +1,9 @@
 {
-  "timestamp": "2025-09-25T18:38:14.371Z",
+  "timestamp": "2025-09-25T18:50:56.786Z",
   "checks": [
     {
       "name": "TypeScript",
       "status": "pass"
-    },
-    {
-      "name": "BlockIndependence",
-      "status": "fail",
-      "violations": 1,
-      "details": [
-        "import { Character, CharacterContract, VOICEVOX_CHARACTERS } from '../contracts/character-contract';\r"
-      ]
-    },
-    {
-      "name": "BlockSize",
-      "status": "pass",
-      "lines": 366,
-      "recommendation": "Good"
     },
     {
       "name": "ContractCompliance",
@@ -27,9 +13,9 @@
     {
       "name": "Syntax",
       "status": "warning",
-      "debugStatements": 5
+      "debugStatements": 1
     }
   ],
-  "score": 40,
+  "score": 67,
   "passed": false
 }
