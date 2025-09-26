@@ -143,6 +143,33 @@ export type AudioBuffer = {
  */
 export type MergedAudioBuffer = Brand<AudioBuffer, 'MergedAudioBuffer'>;
 
+/**
+ * タイムアウト設定型
+ */
+export type TimeoutConfig = {
+  audioQueryTimeout: number; // ミリ秒
+  synthesisTimeout: number; // ミリ秒
+};
+
+/**
+ * ネットワーク設定型
+ */
+export type NetworkConfig = {
+  timeout: TimeoutConfig;
+  retryCount: number;
+  retryDelay: number; // ミリ秒
+};
+
+/**
+ * タイムアウトエラー型
+ */
+export type TimeoutError = {
+  type: 'TIMEOUT_ERROR';
+  message: string;
+  timeoutMs: number;
+  operation: 'AUDIO_QUERY' | 'SYNTHESIS';
+};
+
 // ===== 定数 =====
 
 const MAX_TEXT_LENGTH = 100_000;
@@ -151,6 +178,12 @@ const VALID_SPEAKER_IDS = [2, 3];
 const SENTENCE_DELIMITERS = ['。', '！', '？', '!', '?', '.'];
 const PROGRESS_MIN = 0;
 const PROGRESS_MAX = 100;
+
+// タイムアウト設定
+const DEFAULT_AUDIO_QUERY_TIMEOUT = 30_000; // 30秒
+const DEFAULT_SYNTHESIS_TIMEOUT = 60_000; // 60秒
+const DEFAULT_RETRY_COUNT = 3;
+const DEFAULT_RETRY_DELAY = 1000; // 1秒
 
 // ===== Core関数群 =====
 
@@ -443,6 +476,76 @@ export const applyConfigToAudioQuery = (
     intonationScale: config.intonationScale ?? audioQuery.intonationScale,
     volumeScale: config.volumeScale ?? audioQuery.volumeScale,
   };
+};
+
+/**
+ * 10. デフォルトネットワーク設定生成関数
+ * タイムアウトとリトライの設定を生成
+ */
+export const createDefaultNetworkConfig = (): NetworkConfig => {
+  return {
+    timeout: {
+      audioQueryTimeout: DEFAULT_AUDIO_QUERY_TIMEOUT,
+      synthesisTimeout: DEFAULT_SYNTHESIS_TIMEOUT
+    },
+    retryCount: DEFAULT_RETRY_COUNT,
+    retryDelay: DEFAULT_RETRY_DELAY
+  };
+};
+
+/**
+ * 11. タイムアウトエラー生成関数
+ * 指定された操作とタイムアウト時間でタイムアウトエラーを生成
+ */
+export const createTimeoutError = (
+  operation: 'AUDIO_QUERY' | 'SYNTHESIS',
+  timeoutMs: number
+): TimeoutError => {
+  const operationName = operation === 'AUDIO_QUERY' ? '音声クエリ取得' : '音声合成';
+  return {
+    type: 'TIMEOUT_ERROR',
+    message: `${operationName}がタイムアウトしました（${timeoutMs}ms）`,
+    timeoutMs,
+    operation
+  };
+};
+
+/**
+ * 12. AbortSignalとTimeoutの組み合わせ関数
+ * 指定時間後にAbortするAbortControllerを作成
+ */
+export const createTimeoutAbortController = (timeoutMs: number): {
+  controller: AbortController;
+  timeoutId: ReturnType<typeof setTimeout>;
+  cleanup: () => void;
+} => {
+  const controller = new AbortController();
+
+  const timeoutId = setTimeout(() => {
+    if (!controller.signal.aborted) {
+      controller.abort();
+    }
+  }, timeoutMs);
+
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+  };
+
+  return {
+    controller,
+    timeoutId,
+    cleanup
+  };
+};
+
+/**
+ * 13. タイムアウト判定関数
+ * エラーがタイムアウトエラーかどうかを判定
+ */
+export const isTimeoutError = (error: Error): boolean => {
+  return error.name === 'AbortError' ||
+         error.message.includes('timeout') ||
+         error.message.includes('タイムアウト');
 };
 
 // ===== ユーティリティ関数 =====

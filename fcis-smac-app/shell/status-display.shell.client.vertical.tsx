@@ -78,13 +78,13 @@ const ConnectionIndicator: React.FC<ConnectionIndicatorProps> = ({ status }) => 
   const config = getStatusConfig();
 
   return (
-    <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+    <div className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
       <div
         className={`w-3 h-3 rounded-full ${config.color} ${
           config.animate ? 'animate-pulse' : ''
         }`}
       />
-      <span className={`text-sm font-medium ${config.textColor}`}>
+      <span className={`text-xs sm:text-sm font-medium ${config.textColor}`}>
         VOICEVOXサーバー: {config.text}
       </span>
     </div>
@@ -102,20 +102,20 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
   if (!progress) return null;
 
   return (
-    <div className="space-y-2 p-3 bg-green-50 rounded-lg border border-green-200">
+    <div className="space-y-2 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-green-700">
+        <span className="text-xs sm:text-sm font-medium text-green-700">
           音声合成進行状況
         </span>
-        <span className="text-sm text-green-600 font-bold">
+        <span className="text-xs sm:text-sm text-green-600 font-bold">
           {Math.round(progress.percentage)}%
         </span>
       </div>
 
       {/* プログレスバー */}
-      <div className="w-full bg-green-200 rounded-full h-3">
+      <div className="w-full bg-green-200 rounded-full h-2 sm:h-3">
         <div
-          className="bg-green-600 h-3 rounded-full transition-all duration-300 ease-out"
+          className="bg-green-600 h-2 sm:h-3 rounded-full transition-all duration-300 ease-out"
           style={{ width: `${Math.round(progress.percentage)}%` }}
         />
       </div>
@@ -186,16 +186,16 @@ const SynthesisStateIndicator: React.FC<SynthesisStateIndicatorProps> = ({ state
   const config = getStateConfig();
 
   return (
-    <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+    <div className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
       <div className="flex items-center space-x-2">
-        <span className="text-lg">{config.icon}</span>
+        <span className="text-base sm:text-lg">{config.icon}</span>
         <div
           className={`w-3 h-3 rounded-full ${config.color} ${
             config.animate ? 'animate-pulse' : ''
           }`}
         />
       </div>
-      <span className={`text-sm font-medium ${config.textColor}`}>
+      <span className={`text-xs sm:text-sm font-medium ${config.textColor}`}>
         合成状態: {config.text}
       </span>
     </div>
@@ -215,26 +215,26 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry }) => {
 
   return (
     <div
-      className={`p-4 rounded-lg border ${
+      className={`p-3 sm:p-4 rounded-lg border ${
         error.isRetryable
           ? 'bg-yellow-50 border-yellow-200'
           : 'bg-red-50 border-red-200'
       }`}
     >
-      <div className="flex items-start space-x-3">
+      <div className="flex items-start space-x-2 sm:space-x-3">
         <div className="flex-shrink-0">
-          <span className="text-xl">
+          <span className="text-lg sm:text-xl">
             {error.isRetryable ? '⚠️' : '❌'}
           </span>
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm mb-1 ${
+          <div className={`font-medium text-xs sm:text-sm mb-1 ${
             error.isRetryable ? 'text-yellow-800' : 'text-red-800'
           }`}>
             エラーコード: {error.code}
           </div>
-          <div className={`text-sm ${
+          <div className={`text-xs sm:text-sm ${
             error.isRetryable ? 'text-yellow-700' : 'text-red-700'
           }`}>
             {error.message}
@@ -245,7 +245,7 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry }) => {
         {error.isRetryable && onRetry && (
           <button
             onClick={onRetry}
-            className="flex-shrink-0 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+            className="flex-shrink-0 px-2 sm:px-3 py-1 sm:py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors min-w-[60px] sm:min-w-[80px]"
           >
             再試行
           </button>
@@ -271,7 +271,7 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`status-display space-y-4 ${className}`}>
+    <div className={`status-display space-y-3 sm:space-y-4 ${className}`}>
       {/* 接続状態インジケーター */}
       <ConnectionIndicator status={connectionStatus} />
 

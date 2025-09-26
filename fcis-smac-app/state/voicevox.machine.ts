@@ -224,11 +224,13 @@ export const voicevoxMachine = setup({
       };
     }),
 
-    // Action: 進捗更新
+    // Action: 進捗更新と次チャンクインデックスへの更新（一品性を保証）
     updateProgressAction: assign(({ context }) => {
-      const progress = calculateSynthesisProgress(context.currentChunkIndex, context.chunks.length);
+      const nextIndex = context.currentChunkIndex + 1;
+      const progress = calculateSynthesisProgress(nextIndex, context.chunks.length);
       return {
         ...context,
+        currentChunkIndex: nextIndex,
         progress: unwrap({ success: true, value: progress }) || 0
       };
     }),
@@ -237,8 +239,7 @@ export const voicevoxMachine = setup({
     storeAudioBufferAction: assign(({ context }, params: { audioBuffer: ArrayBuffer }) => {
       return {
         ...context,
-        audioBuffers: [...context.audioBuffers, params.audioBuffer],
-        currentChunkIndex: context.currentChunkIndex + 1
+        audioBuffers: [...context.audioBuffers, params.audioBuffer]
       };
     }),
 
@@ -306,9 +307,10 @@ export const voicevoxMachine = setup({
              context.error?.retryable === true;
     },
 
-    // Guard: 未処理チャンク判定
+    // Guard: 未処理チャンク判定（次のインデックスでチェック）
     hasMoreChunksGuard: ({ context }) => {
-      return context.currentChunkIndex < context.chunks.length;
+      const nextIndex = context.currentChunkIndex + 1;
+      return nextIndex < context.chunks.length;
     },
 
     // Guard: テキスト検証
@@ -324,9 +326,10 @@ export const voicevoxMachine = setup({
       return context.connectionStatus.isConnected;
     },
 
-    // Guard: 全チャンク完了判定
+    // Guard: 全チャンク完了判定（次のインデックスでチェック）
     allChunksCompleteGuard: ({ context }) => {
-      return context.currentChunkIndex >= context.chunks.length;
+      const nextIndex = context.currentChunkIndex + 1;
+      return nextIndex >= context.chunks.length;
     }
   }
 }).createMachine({
@@ -390,8 +393,9 @@ export const voicevoxMachine = setup({
         },
         onDone: [
           {
-            target: 'synthesizing',
+            target: '.', // 内部遷移で再実行を保証
             guard: 'hasMoreChunksGuard',
+            reenter: true, // XState v5: 状態の再入を明示的に指定
             actions: [
               {
                 type: 'storeAudioBufferAction',
@@ -423,9 +427,11 @@ export const voicevoxMachine = setup({
         }
       },
       on: {
+        // synthesizing状態内での内部遷移を追加
         CHUNK_COMPLETE: {
-          target: 'synthesizing',
+          target: '.', // 内部遷移（自分自身への遷移）
           guard: 'hasMoreChunksGuard',
+          reenter: true, // サービスの再実行を保証
           actions: 'updateProgressAction'
         },
         ALL_COMPLETE: {

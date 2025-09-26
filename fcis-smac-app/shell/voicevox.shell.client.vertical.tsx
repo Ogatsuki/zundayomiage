@@ -43,7 +43,14 @@ import type {
   classifyHttpError,
   applyConfigToAudioQuery,
   unwrap,
-  unwrapError
+  unwrapError,
+  TimeoutConfig,
+  NetworkConfig,
+  TimeoutError,
+  createDefaultNetworkConfig,
+  createTimeoutAbortController,
+  createTimeoutError,
+  isTimeoutError
 } from '../core/voicevox.core';
 import * as VoiceCore from '../core/voicevox.core';
 import type {
@@ -122,60 +129,165 @@ const useAbortSafe = () => {
   };
 };
 
+// ===== エラー処理ユーティリティ =====
+
+/**
+ * HTTPレスポンスからエラー詳細を取得
+ */
+const getDetailedErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      const errorData = await response.json();
+      return errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+    } else {
+      const errorText = await response.text();
+      return errorText || `HTTP ${response.status}: ${response.statusText}`;
+    }
+  } catch {
+    return `HTTP ${response.status}: ${response.statusText}`;
+  }
+};
+
+/**
+ * VOICEVOXエラー用のログ記録
+ */
+const logVoicevoxError = (context: string, error: unknown, details?: string): void => {
+  console.error(`[VoiceVox Shell] ${context}:`, {
+    error: error instanceof Error ? error.message : String(error),
+    details,
+    timestamp: new Date().toISOString()
+  });
+};
+
 // ===== 副作用処理（Shell層の責務） =====
 
 /**
- * HTTP通信 - Audio Query取得
+ * HTTP通信 - Audio Query取得（30秒タイムアウト付き）
  */
 const fetchAudioQuery = async (
   text: string,
   speakerId: number,
   apiUrl: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs: number = 30_000
 ): Promise<AudioQuery> => {
   const queryRequest = VoiceCore.buildAudioQuery(text, speakerId);
   const url = `${apiUrl}/audio_query?text=${encodeURIComponent(queryRequest.text)}&speaker=${queryRequest.speaker}`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    signal,
-  });
+  // タイムアウト用AbortControllerを作成
+  const timeoutController = VoiceCore.createTimeoutAbortController(timeoutMs);
 
-  if (!response.ok) {
-    const errorType = VoiceCore.classifyHttpError(response.status);
-    throw new Error(errorType);
+  // 既存のsignalとタイムアウトsignalを組み合わせ
+  const combinedController = new AbortController();
+
+  const handleAbort = () => {
+    combinedController.abort();
+    timeoutController.cleanup();
+  };
+
+  if (signal) {
+    signal.addEventListener('abort', handleAbort);
   }
 
-  return response.json();
+  timeoutController.controller.signal.addEventListener('abort', handleAbort);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: combinedController.signal,
+    });
+
+    if (!response.ok) {
+      const errorType = VoiceCore.classifyHttpError(response.status);
+      const errorDetails = await getDetailedErrorMessage(response);
+      const errorMessage = `Audio query failed: ${errorDetails}`;
+
+      logVoicevoxError('fetchAudioQuery', errorMessage, `Status: ${response.status}, URL: ${url}`);
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error && VoiceCore.isTimeoutError(error)) {
+      const timeoutError = VoiceCore.createTimeoutError('AUDIO_QUERY', timeoutMs);
+      logVoicevoxError('fetchAudioQuery', timeoutError.message, `URL: ${url}, Timeout: ${timeoutMs}ms`);
+      throw new Error(timeoutError.message);
+    }
+    throw error;
+  } finally {
+    timeoutController.cleanup();
+    if (signal) {
+      signal.removeEventListener('abort', handleAbort);
+    }
+  }
 };
 
 /**
- * HTTP通信 - 音声合成
+ * HTTP通信 - 音声合成（60秒タイムアウト付き）
  */
 const synthesizeAudio = async (
   audioQuery: AudioQuery,
   speakerId: number,
   apiUrl: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs: number = 60_000
 ): Promise<ArrayBuffer> => {
-  const response = await fetch(`${apiUrl}/synthesis?speaker=${speakerId}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(audioQuery),
-    signal,
-  });
+  const url = `${apiUrl}/synthesis?speaker=${speakerId}`;
 
-  if (!response.ok) {
-    const errorType = VoiceCore.classifyHttpError(response.status);
-    throw new Error(errorType);
+  // タイムアウト用AbortControllerを作成
+  const timeoutController = VoiceCore.createTimeoutAbortController(timeoutMs);
+
+  // 既存のsignalとタイムアウトsignalを組み合わせ
+  const combinedController = new AbortController();
+
+  const handleAbort = () => {
+    combinedController.abort();
+    timeoutController.cleanup();
+  };
+
+  if (signal) {
+    signal.addEventListener('abort', handleAbort);
   }
 
-  return response.arrayBuffer();
+  timeoutController.controller.signal.addEventListener('abort', handleAbort);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(audioQuery),
+      signal: combinedController.signal,
+    });
+
+    if (!response.ok) {
+      const errorType = VoiceCore.classifyHttpError(response.status);
+      const errorDetails = await getDetailedErrorMessage(response);
+      const errorMessage = `Audio synthesis failed: ${errorDetails}`;
+
+      logVoicevoxError('synthesizeAudio', errorMessage, `Status: ${response.status}, Speaker: ${speakerId}`);
+      throw new Error(errorMessage);
+    }
+
+    return response.arrayBuffer();
+  } catch (error) {
+    if (error instanceof Error && VoiceCore.isTimeoutError(error)) {
+      const timeoutError = VoiceCore.createTimeoutError('SYNTHESIS', timeoutMs);
+      logVoicevoxError('synthesizeAudio', timeoutError.message, `URL: ${url}, Speaker: ${speakerId}, Timeout: ${timeoutMs}ms`);
+      throw new Error(timeoutError.message);
+    }
+    throw error;
+  } finally {
+    timeoutController.cleanup();
+    if (signal) {
+      signal.removeEventListener('abort', handleAbort);
+    }
+  }
 };
 
 /**
@@ -192,28 +304,56 @@ const playAudio = async (audioBlob: Blob): Promise<void> => {
 
     audio.addEventListener('error', (e) => {
       URL.revokeObjectURL(audio.src);
-      reject(new Error('PLAYBACK_FAILED'));
+      const errorMessage = 'Audio playback failed';
+      logVoicevoxError('playAudio', errorMessage, `Audio URL: ${audio.src}`);
+      reject(new Error(errorMessage));
     });
 
-    audio.play().catch(reject);
+    audio.play().catch((playError) => {
+      URL.revokeObjectURL(audio.src);
+      const errorMessage = `Audio play failed: ${playError instanceof Error ? playError.message : String(playError)}`;
+      logVoicevoxError('playAudio', errorMessage, `Audio duration: ${audio.duration}`);
+      reject(new Error(errorMessage));
+    });
   });
 };
 
 /**
- * 接続確認処理
+ * 接続確認処理（10秒タイムアウト付き）
  */
 const checkConnection = async (
   apiUrl: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs: number = 10_000
 ): Promise<{ isConnected: boolean; version: string; serverUrl: string }> => {
+  // タイムアウト用AbortControllerを作成
+  const timeoutController = VoiceCore.createTimeoutAbortController(timeoutMs);
+
+  // 既存のsignalとタイムアウトsignalを組み合わせ
+  const combinedController = new AbortController();
+
+  const handleAbort = () => {
+    combinedController.abort();
+    timeoutController.cleanup();
+  };
+
+  if (signal) {
+    signal.addEventListener('abort', handleAbort);
+  }
+
+  timeoutController.controller.signal.addEventListener('abort', handleAbort);
+
   try {
     const response = await fetch(`${apiUrl}/version`, {
       method: 'GET',
-      signal,
+      signal: combinedController.signal,
     });
 
     if (!response.ok) {
-      throw new Error('Connection failed');
+      const errorDetails = await getDetailedErrorMessage(response);
+      const errorMessage = `VOICEVOX server connection failed: ${errorDetails}`;
+      logVoicevoxError('checkConnection', errorMessage, `Status: ${response.status}, URL: ${apiUrl}`);
+      throw new Error(errorMessage);
     }
 
     const version = await response.text();
@@ -223,7 +363,20 @@ const checkConnection = async (
       serverUrl: apiUrl
     };
   } catch (error) {
-    throw new Error(`VOICEVOX server connection failed: ${error}`);
+    if (error instanceof Error && VoiceCore.isTimeoutError(error)) {
+      const errorMessage = `VOICEVOX server connection timeout (${timeoutMs}ms): ${apiUrl}`;
+      logVoicevoxError('checkConnection', errorMessage, `URL: ${apiUrl}, Timeout: ${timeoutMs}ms`);
+      throw new Error(errorMessage);
+    }
+
+    const errorMessage = error instanceof Error ? error.message : `VOICEVOX server connection failed: ${String(error)}`;
+    logVoicevoxError('checkConnection', errorMessage, `URL: ${apiUrl}`);
+    throw new Error(errorMessage);
+  } finally {
+    timeoutController.cleanup();
+    if (signal) {
+      signal.removeEventListener('abort', handleAbort);
+    }
   }
 };
 
@@ -234,38 +387,61 @@ export function useVoicevoxSynthesis(): VoiceSynthesisContract {
     voicevoxMachine.provide({
       actors: {
         connectService: fromPromise(async ({ input }: { input: { apiUrl: string } }) => {
-          return await checkConnection(input.apiUrl);
+          try {
+            return await checkConnection(input.apiUrl);
+          } catch (error) {
+            logVoicevoxError('connectService', error, `Attempting connection to: ${input.apiUrl}`);
+            throw error;
+          }
         }),
         synthesizeService: fromPromise(async ({ input }: {
           input: { text: string; speakerId: number; apiUrl: string }
         }) => {
           const { text, speakerId, apiUrl } = input;
-          const audioQuery = await fetchAudioQuery(text, speakerId, apiUrl);
-          const audioBuffer = await synthesizeAudio(audioQuery, speakerId, apiUrl);
-          return audioBuffer;
+          try {
+            console.log(`[VoiceVox Shell] synthesizeService: Starting synthesis`, {
+              textPreview: text.substring(0, 50) + '...',
+              speakerId,
+              timestamp: new Date().toISOString()
+            });
+            const audioQuery = await fetchAudioQuery(text, speakerId, apiUrl);
+            const audioBuffer = await synthesizeAudio(audioQuery, speakerId, apiUrl);
+            return audioBuffer;
+          } catch (error) {
+            logVoicevoxError('synthesizeService', error, `Failed synthesis - Text length: ${text.length}, Speaker: ${speakerId}`);
+            throw error;
+          }
         }),
         playAudioService: fromPromise(async ({ input }: {
           input: { audioBuffers: ArrayBuffer[] }
         }) => {
-          // 音声バッファを結合してBlobとして再生
-          if (input.audioBuffers.length === 0) return;
-
-          let combinedBuffer: ArrayBuffer;
-          if (input.audioBuffers.length === 1) {
-            combinedBuffer = input.audioBuffers[0];
-          } else {
-            const totalLength = input.audioBuffers.reduce((sum: number, buffer: ArrayBuffer) => sum + buffer.byteLength, 0);
-            const combined = new Uint8Array(totalLength);
-            let offset = 0;
-            for (const buffer of input.audioBuffers) {
-              combined.set(new Uint8Array(buffer), offset);
-              offset += buffer.byteLength;
+          try {
+            // 音声バッファを結合してBlobとして再生
+            if (input.audioBuffers.length === 0) {
+              logVoicevoxError('playAudioService', 'No audio buffers provided', 'Empty buffer array');
+              return;
             }
-            combinedBuffer = combined.buffer;
-          }
 
-          const audioBlob = new Blob([combinedBuffer], { type: 'audio/wav' });
-          await playAudio(audioBlob);
+            let combinedBuffer: ArrayBuffer;
+            if (input.audioBuffers.length === 1) {
+              combinedBuffer = input.audioBuffers[0];
+            } else {
+              const totalLength = input.audioBuffers.reduce((sum: number, buffer: ArrayBuffer) => sum + buffer.byteLength, 0);
+              const combined = new Uint8Array(totalLength);
+              let offset = 0;
+              for (const buffer of input.audioBuffers) {
+                combined.set(new Uint8Array(buffer), offset);
+                offset += buffer.byteLength;
+              }
+              combinedBuffer = combined.buffer;
+            }
+
+            const audioBlob = new Blob([combinedBuffer], { type: 'audio/wav' });
+            await playAudio(audioBlob);
+          } catch (error) {
+            logVoicevoxError('playAudioService', error, `Buffer count: ${input.audioBuffers.length}`);
+            throw error;
+          }
         })
       }
     })
@@ -430,8 +606,20 @@ export const VoicevoxSynthesisBlock: React.FC<VoicevoxSynthesisBlockProps> = ({
   useEffectOnce(() => {
     if (text && !hasAutoStarted.current && !disabled && synthesis.isConnected()) {
       hasAutoStarted.current = true;
-      synthesis.synthesizeVoice(text, speakerId).catch(() => {
-        // エラーハンドリングはsynthesis.errorで行う
+      synthesis.synthesizeVoice(text, speakerId).catch((error) => {
+        // エラーログ記録とユーザーへのフィードバック
+        logVoicevoxError('Auto synthesis start', error, `Text length: ${text.length}, Speaker: ${speakerId}`);
+
+        // エラーコールバックが設定されている場合は呼び出し
+        if (onError) {
+          const errorInfo: ErrorInfo = {
+            code: 'AUTO_SYNTHESIS_FAILED',
+            message: `自動音声合成の開始に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+            isRetryable: true,
+            retryCount: 0
+          };
+          onError(errorInfo);
+        }
       });
     }
   });

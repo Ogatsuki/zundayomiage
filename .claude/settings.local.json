@@ -216,7 +216,8 @@
       "mcp__playwright__browser_handle_dialog",
       "mcp__playwright__browser_resize",
       "mcp__playwright__browser_install",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(NODE_ENV=test npx tsx core/voicevox.core.timeout.test.ts)"
     ],
     "deny": []
   },

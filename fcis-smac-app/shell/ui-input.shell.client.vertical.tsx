@@ -110,16 +110,16 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
   const isOverLimit = currentLength > MAX_CHARS;
 
   return (
-    <div className={`ui-input-component bg-white rounded-lg shadow-lg p-6 ${className}`}>
+    <div className={`ui-input-component bg-white rounded-lg shadow-lg p-4 sm:p-6 ${className}`}>
       {/* ヘッダー */}
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-green-800 mb-2">テキスト読み上げ</h2>
-        <p className="text-sm text-green-600">読み上げたいテキストを入力してください</p>
+      <div className="mb-3 sm:mb-4">
+        <h2 className="text-lg sm:text-xl font-bold text-green-800 mb-2">テキスト読み上げ</h2>
+        <p className="text-xs sm:text-sm text-green-600">読み上げたいテキストを入力してください</p>
       </div>
 
       {/* テキストエリア */}
-      <div className="mb-4">
-        <label htmlFor="text-input" className="block text-sm font-medium text-green-700 mb-2">
+      <div className="mb-3 sm:mb-4">
+        <label htmlFor="text-input" className="block text-xs sm:text-sm font-medium text-green-700 mb-2">
           読み上げテキスト
         </label>
         <textarea
@@ -128,7 +128,7 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
           placeholder="ここに読み上げたいテキストを入力してください..."
-          className={`w-full h-32 px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 transition-colors ${
+          className={`w-full h-24 sm:h-32 px-2 sm:px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 transition-colors text-sm sm:text-base ${
             isOverLimit
               ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
               : text.trim().length > 0
@@ -167,15 +167,15 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
       </div>
 
       {/* 話者選択 */}
-      <div className="mb-6">
-        <label htmlFor="speaker-select" className="block text-sm font-medium text-green-700 mb-2">
+      <div className="mb-4 sm:mb-6">
+        <label htmlFor="speaker-select" className="block text-xs sm:text-sm font-medium text-green-700 mb-2">
           話者選択
         </label>
         <select
           id="speaker-select"
           value={speakerId}
           onChange={handleSpeakerChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-colors bg-white"
+          className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-colors bg-white text-sm sm:text-base"
           disabled={disabled}
         >
           {SPEAKER_OPTIONS.map((speaker) => (
@@ -187,12 +187,12 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
       </div>
 
       {/* 制御ボタン */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         {/* 開始ボタン */}
         <button
           onClick={handleStart}
           disabled={disabled || !isValid || isProcessing}
-          className={`px-6 py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-0 ${
+          className={`px-4 sm:px-6 py-2 sm:py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-[100px] text-sm sm:text-base ${
             disabled || !isValid || isProcessing
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800 shadow-md hover:shadow-lg'
@@ -213,7 +213,7 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
         <button
           onClick={handleStop}
           disabled={disabled || !isProcessing}
-          className={`px-6 py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-0 ${
+          className={`px-4 sm:px-6 py-2 sm:py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-[100px] text-sm sm:text-base ${
             disabled || !isProcessing
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-md hover:shadow-lg'
@@ -226,7 +226,7 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
         <button
           onClick={handleReset}
           disabled={disabled}
-          className={`px-6 py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-0 ${
+          className={`px-4 sm:px-6 py-2 sm:py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-[100px] text-sm sm:text-base ${
             disabled
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700 shadow-md hover:shadow-lg'
@@ -237,7 +237,7 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
       </div>
 
       {/* ヘルプテキスト */}
-      <div className="mt-4 text-xs text-gray-600">
+      <div className="mt-3 sm:mt-4 text-xs text-gray-600">
         <p>💡 ヒント: Ctrl+Enter で素早く読み上げを開始できます</p>
       </div>
     </div>

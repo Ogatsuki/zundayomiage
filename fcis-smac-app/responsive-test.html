@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+    <title>ずんだもん音声合成 - FCIS+SMAC - レスポンシブテスト</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .min-w-100 { min-width: 100px; }
+    </style>
+</head>
+<body>
+    <main class="min-h-screen bg-gradient-to-br from-green-50 to-green-100 p-4 md:p-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- ヘッダー -->
+            <header class="text-center mb-6 sm:mb-8 md:mb-12">
+                <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-green-800 mb-3 sm:mb-4">
+                    ずんだもん音声合成アプリ
+                </h1>
+                <p class="text-green-600 text-xs sm:text-sm md:text-base px-2 sm:px-0">
+                    FCIS+SMACアーキテクチャで実装された次世代音声合成システム
+                </p>
+            </header>
+
+            <!-- メインコンテンツ -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                <!-- 左カラム: 入力エリア -->
+                <div class="space-y-4 sm:space-y-6">
+                    <!-- UIInputComponent -->
+                    <div class="ui-input-component bg-white rounded-lg shadow-lg p-4 sm:p-6">
+                        <!-- ヘッダー -->
+                        <div class="mb-3 sm:mb-4">
+                            <h2 class="text-lg sm:text-xl font-bold text-green-800 mb-2">テキスト読み上げ</h2>
+                            <p class="text-xs sm:text-sm text-green-600">読み上げたいテキストを入力してください</p>
+                        </div>
+
+                        <!-- テキストエリア -->
+                        <div class="mb-3 sm:mb-4">
+                            <label for="text-input" class="block text-xs sm:text-sm font-medium text-green-700 mb-2">
+                                読み上げテキスト
+                            </label>
+                            <textarea
+                                id="text-input"
+                                placeholder="ここに読み上げたいテキストを入力してください..."
+                                class="w-full h-24 sm:h-32 px-2 sm:px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-colors text-sm sm:text-base"
+                            >これはテストテキストです。レスポンシブデザインの確認を行っています。</textarea>
+
+                            <!-- 文字数表示 -->
+                            <div class="flex justify-between items-center mt-2">
+                                <div class="text-xs text-gray-500">
+                                    50 / 1000 文字
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    残り: 950 文字
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 話者選択 -->
+                        <div class="mb-4 sm:mb-6">
+                            <label for="speaker-select" class="block text-xs sm:text-sm font-medium text-green-700 mb-2">
+                                話者選択
+                            </label>
+                            <select
+                                id="speaker-select"
+                                class="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-colors bg-white text-sm sm:text-base"
+                            >
+                                <option value="3">ずんだもん（通常）</option>
+                                <option value="1">ずんだもん（あまあま）</option>
+                                <option value="7">ずんだもん（ツンツン）</option>
+                                <option value="5">ずんだもん（セクシー）</option>
+                            </select>
+                        </div>
+
+                        <!-- 制御ボタン -->
+                        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                            <!-- 開始ボタン -->
+                            <button
+                                class="px-4 sm:px-6 py-2 sm:py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-100 text-sm sm:text-base bg-green-600 text-white hover:bg-green-700 active:bg-green-800 shadow-md hover:shadow-lg"
+                                title="Ctrl+Enterでも開始できます"
+                            >
+                                開始
+                            </button>
+
+                            <!-- 停止ボタン -->
+                            <button
+                                class="px-4 sm:px-6 py-2 sm:py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-100 text-sm sm:text-base bg-gray-300 text-gray-500 cursor-not-allowed"
+                            >
+                                停止
+                            </button>
+
+                            <!-- リセットボタン -->
+                            <button
+                                class="px-4 sm:px-6 py-2 sm:py-3 rounded-md font-medium transition-all duration-200 flex-1 min-w-100 text-sm sm:text-base bg-green-500 text-white hover:bg-green-600 active:bg-green-700 shadow-md hover:shadow-lg"
+                            >
+                                リセット
+                            </button>
+                        </div>
+
+                        <!-- ヘルプテキスト -->
+                        <div class="mt-3 sm:mt-4 text-xs text-gray-600">
+                            <p>💡 ヒント: Ctrl+Enter で素早く読み上げを開始できます</p>
+                        </div>
+                    </div>
+
+                    <!-- StatusDisplay -->
+                    <div class="status-display space-y-3 sm:space-y-4">
+                        <!-- 接続状態インジケーター -->
+                        <div class="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="text-xs sm:text-sm font-medium text-green-700">
+                                VOICEVOXサーバー: 接続済み
+                            </span>
+                        </div>
+
+                        <!-- 合成状態インジケーター -->
+                        <div class="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-base sm:text-lg">⏸️</span>
+                                <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+                            </div>
+                            <span class="text-xs sm:text-sm font-medium text-gray-600">
+                                合成状態: アイドル
+                            </span>
+                        </div>
+
+                        <!-- エラー表示例 -->
+                        <div class="p-3 sm:p-4 rounded-lg border bg-yellow-50 border-yellow-200">
+                            <div class="flex items-start space-x-2 sm:space-x-3">
+                                <div class="flex-shrink-0">
+                                    <span class="text-lg sm:text-xl">⚠️</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-xs sm:text-sm mb-1 text-yellow-800">
+                                        エラーコード: CONNECTION_TIMEOUT
+                                    </div>
+                                    <div class="text-xs sm:text-sm text-yellow-700">
+                                        サーバーとの接続がタイムアウトしました。ネットワーク接続を確認してください。
+                                    </div>
+                                </div>
+                                <button
+                                    class="flex-shrink-0 px-2 sm:px-3 py-1 sm:py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors min-w-[60px] sm:min-w-[80px]"
+                                >
+                                    再試行
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右カラム: 音声合成エリア -->
+                <div class="space-y-4 sm:space-y-6">
+                    <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+                        <h2 class="text-lg sm:text-xl font-bold text-green-800 mb-3 sm:mb-4">
+                            音声合成処理
+                        </h2>
+
+                        <!-- 進行状況表示 -->
+                        <div class="space-y-2 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs sm:text-sm font-medium text-green-700">
+                                    音声合成進行状況
+                                </span>
+                                <span class="text-xs sm:text-sm text-green-600 font-bold">
+                                    65%
+                                </span>
+                            </div>
+
+                            <!-- プログレスバー -->
+                            <div class="w-full bg-green-200 rounded-full h-2 sm:h-3">
+                                <div
+                                    class="bg-green-600 h-2 sm:h-3 rounded-full transition-all duration-300 ease-out"
+                                    style="width: 65%"
+                                ></div>
+                            </div>
+
+                            <!-- チャンク情報 -->
+                            <div class="text-xs text-green-600 text-center font-medium">
+                                3/5 チャンク処理済み
+                            </div>
+                        </div>
+
+                        <!-- 音声プレイヤー（仮想） -->
+                        <div class="bg-gray-50 rounded-lg p-4 text-center">
+                            <div class="text-lg sm:text-xl mb-2">🔊</div>
+                            <p class="text-sm sm:text-base text-gray-600 mb-2">音声合成中...</p>
+                            <div class="flex justify-center space-x-2">
+                                <button class="px-3 py-1 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700">
+                                    ▶️ 再生
+                                </button>
+                                <button class="px-3 py-1 bg-gray-400 text-white text-xs sm:text-sm rounded">
+                                    ⏸️ 一時停止
+                                </button>
+                                <button class="px-3 py-1 bg-blue-600 text-white text-xs sm:text-sm rounded hover:bg-blue-700">
+                                    💾 ダウンロード
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ヘルプセクション -->
+                    <div class="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-200">
+                        <h3 class="font-bold text-green-800 mb-2 text-sm sm:text-base">💡 使い方</h3>
+                        <div class="text-xs sm:text-sm text-green-700 space-y-1">
+                            <p>1. 左側のテキスト入力欄に読み上げたいテキストを入力</p>
+                            <p>2. 話者を選択（デフォルト: ずんだもん通常）</p>
+                            <p>3. 「開始」ボタンを押すか、Ctrl+Enterで音声合成開始</p>
+                            <p>4. 右側で合成処理の進捗と状態を確認</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- フッター -->
+            <footer class="text-center mt-6 sm:mt-8 md:mt-12 text-xs sm:text-sm text-green-600 px-2 sm:px-0">
+                <p class="text-xs sm:text-sm">理想性スコア: 93% | アーキテクチャ: FCIS+SMAC</p>
+                <p class="mt-1 sm:mt-2 text-xs sm:text-sm">Core層・State層・Shell層による完全な関心事の分離</p>
+                <p class="mt-1 sm:mt-2 text-xs sm:text-sm">ユーザー入力による動的音声合成 | エラーハンドリング・リトライ機能付き</p>
+            </footer>
+        </div>
+    </main>
+
+    <!-- テスト用の表示情報 -->
+    <div id="viewport-info" class="fixed top-4 right-4 bg-black bg-opacity-75 text-white px-3 py-2 rounded text-xs">
+        <div>ビューポート: <span id="viewport-size"></span></div>
+        <div>Tailwindブレークポイント: <span id="breakpoint"></span></div>
+    </div>
+
+    <script>
+        function updateViewportInfo() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            document.getElementById('viewport-size').textContent = `${width}x${height}`;
+
+            let breakpoint = 'base';
+            if (width >= 1280) breakpoint = 'xl';
+            else if (width >= 1024) breakpoint = 'lg';
+            else if (width >= 768) breakpoint = 'md';
+            else if (width >= 640) breakpoint = 'sm';
+
+            document.getElementById('breakpoint').textContent = breakpoint;
+        }
+
+        updateViewportInfo();
+        window.addEventListener('resize', updateViewportInfo);
+    </script>
+</body>
+</html>
