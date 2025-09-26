@@ -67,15 +67,41 @@ export default function VoiceSynthesisPage() {
   // Check VOICEVOX connection on mount
   useEffect(() => {
     const checkConnection = async () => {
-      if (voicevoxApiRef.current?.checkConnection) {
-        const connected = await voicevoxApiRef.current.checkConnection();
-        setIsConnected(connected);
+      console.log('Starting VOICEVOX connection check...');
+
+      // refが準備できるまで待つ
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (attempts < maxAttempts) {
+        console.log(`Connection check attempt ${attempts + 1}/${maxAttempts}`);
+
+        if (voicevoxApiRef.current?.checkConnection) {
+          console.log('VoicevoxApi ref is available, checking connection...');
+          try {
+            const connected = await voicevoxApiRef.current.checkConnection();
+            console.log('Connection check result:', connected);
+            setIsConnected(connected);
+            break;
+          } catch (error) {
+            console.error('Connection check failed:', error);
+            setIsConnected(false);
+            break;
+          }
+        }
+
+        console.log('VoicevoxApi ref not ready yet, waiting...');
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (attempts === maxAttempts) {
+        console.error('VoicevoxApi ref not available after 5 seconds');
+        setIsConnected(false);
       }
     };
 
-    // Delay check to ensure client-side components are loaded
-    const timer = setTimeout(checkConnection, 1000);
-    return () => clearTimeout(timer);
+    checkConnection();
   }, []);
 
   // Handle text change

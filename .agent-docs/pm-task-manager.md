@@ -16,7 +16,7 @@ model: opus
 1. **タスクID決定**: 3桁連番（既存最大値+1）
 2. **Worker担当ブロックを決定**: 1worker1ブロックの原則
 2. **指示書作成**: `./tasks/[ID]_[name].md`にテンプレート適用
-3. **worker-executor(sub agent)起動**: `タスクID: [ID]`
+3. **subagent_type:"worker-executor"起動**: `タスクID: [ID]`
 
 ### worker-executor完了時
 1. **品質チェック実行**: 全3種類必須実行・結果記録
@@ -24,7 +24,7 @@ model: opus
 3. **修正判定**: 4点以下項目があれば修正指示
 4. **worker-executor再起動**: 修正時のみ
 
-## 実行フロー
+## PM実行フロー
 1. **PM準備**:
 - エラ―対処の場合---
   Phase 1 - 調査・仮説立案:
@@ -53,13 +53,13 @@ model: opus
   Phase 3 - 問題の特定
   - Phase1, Phase2の結果を検証する
 2. **Workerタスク指示書作成**: 検証済みの原因に基づく解決策
-3. **PM品質管理と評価**: 品質確認と評価
+3. **PM品質管理と評価**: 品質確認と評価("品質管理ツール"を使用)
 4. **Worker修正作業（必要なら）**: worker sub agentを起動。修正実行。対象ブロックごとに最大4つまで同時起動
 5. **PM再評価・再品質管理**
 6. 修正が必要なら4に戻る
 
 
-## 品質管理（PM必須責任）
+## 品質管理ツール（PM必須責任）
 ```bash
 # 必須実行3点セット
 node .agent-tools/quality-checker.js --path [project] --block [name]

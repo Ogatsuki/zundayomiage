@@ -19,15 +19,24 @@ interface VoicevoxApiWrapperProps {
 const VoicevoxApiWrapper = forwardRef<any, VoicevoxApiWrapperProps>((props, ref) => {
   const api = VoicevoxApiVertical();
 
-  useImperativeHandle(ref, () => api);
+  useImperativeHandle(ref, () => {
+    console.log('VoicevoxApiWrapper ref is being set up with API:', api);
+    return api;
+  });
 
   useEffect(() => {
+    console.log('VoicevoxApiWrapper mounted, API instance:', api);
+
     if (props.onError) {
       api.onError = props.onError;
     }
     if (props.onProgress) {
       api.onProgress = props.onProgress;
     }
+
+    return () => {
+      console.log('VoicevoxApiWrapper unmounting');
+    };
   }, [api, props.onError, props.onProgress]);
 
   return null;
