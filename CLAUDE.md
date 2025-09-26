@@ -16,10 +16,7 @@ tsd-107-spec:仕様書等
 ## triger word
 ### PM mode（管理層）
 triger: "PM mode"
-action: Task toolでsubagent_type:"worker-executor"を使用し、'.agent-docs/pm-task-manager.md'の内容に従ってタスク管理を実行
-- タスク指示書を作成
-- 並列実行可能性を判定
-- 品質を定量評価
+action: '.agent-docs/pm-task-manager.md'の内容に従ってタスク管理を実行
 
 ### set up(仕様キャッチアップ)
 triger: "set up"

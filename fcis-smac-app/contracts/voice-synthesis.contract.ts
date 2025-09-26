@@ -13,6 +13,7 @@ export interface SynthesisProgress {
   processedChunks: number;
   totalChunks: number;
   isLongText: boolean;
+  startTime?: number; // タイムアウト検知用のタイムスタンプ
 }
 
 export interface SynthesisConfig {

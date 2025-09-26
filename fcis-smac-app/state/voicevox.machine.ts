@@ -80,7 +80,9 @@ const initialContext: VoicevoxContext = {
   error: null,
   connectionStatus: {
     isConnected: false,
-    serverUrl: 'http://localhost:50021',
+    serverUrl: process.env.NEXT_PUBLIC_MOCK_MODE === 'true'
+      ? 'mock://localhost'
+      : (process.env.NEXT_PUBLIC_VOICEVOX_API_URL || 'http://localhost:50021'),
     version: null,
     lastChecked: null
   },
@@ -89,19 +91,31 @@ const initialContext: VoicevoxContext = {
 
 // Services（副作用を含む処理）
 const connectService = fromPromise(async ({ input }: { input: { apiUrl: string } }) => {
-  // モック接続処理
   const { apiUrl } = input;
 
-  // 実際の実装では、VOICEVOXサーバーへの接続確認を行う
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // モックモード判定
+  const isMock = !apiUrl || apiUrl.includes('mock') || process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-  // 接続テスト（簡単なヘルスチェック）
-  try {
-    // 実装例: const response = await fetch(`${apiUrl}/version`);
-    // モックでは成功を仮定
+  if (isMock) {
+    // モック接続処理（実サーバーへの接続なし）
+    await new Promise(resolve => setTimeout(resolve, 500));
     return {
       isConnected: true,
-      version: '0.14.0',
+      version: 'mock-1.0.0',
+      serverUrl: 'mock://localhost'
+    };
+  }
+
+  // 実際のAPI呼び出し
+  try {
+    const response = await fetch(`${apiUrl}/version`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const version = await response.text();
+    return {
+      isConnected: true,
+      version: version || '0.14.0',
       serverUrl: apiUrl
     };
   } catch (error) {
@@ -116,22 +130,67 @@ const synthesizeService = fromPromise(async ({ input }: {
     apiUrl: string;
   }
 }) => {
-  // モック音声合成処理
   const { text, speakerId, apiUrl } = input;
 
-  // 実際の実装では、VOICEVOX APIを呼び出して音声合成を行う
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // モックモード判定
+  const isMock = !apiUrl || apiUrl.includes('mock') || process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
+  if (isMock) {
+    // モック音声合成処理（実サーバーへの接続なし）
+    // プログレス更新のための遅延
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // ダミーのAudioBufferデータを生成
+    // 実際の音声の長さに基づいてサイズを調整
+    const estimatedDuration = Math.max(1.0, text.length * 0.1); // 文字数に基づく推定
+    const sampleRate = 24000; // VOICEVOXの標準サンプルレート
+    const channels = 1; // モノラル
+    const bytesPerSample = 2; // 16bit
+    const bufferSize = Math.floor(sampleRate * estimatedDuration * channels * bytesPerSample);
+
+    const audioBuffer = new ArrayBuffer(bufferSize);
+
+    return {
+      audio: audioBuffer,
+      duration: estimatedDuration
+    };
+  }
+
+  // 実際のAPI呼び出し
   try {
-    // 実装例:
     // 1. audio_query APIでクエリを取得
-    // 2. synthesis APIで音声データを生成
-    // const audioQuery = await fetchAudioQuery(apiUrl, text, speakerId);
-    // const audioBuffer = await synthesizeAudio(apiUrl, audioQuery, speakerId);
+    const audioQueryResponse = await fetch(`${apiUrl}/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
 
-    // モックではダミーのArrayBufferを返す
-    const dummyBuffer = new ArrayBuffer(44100 * 2); // 1秒分のダミー音声データ
-    return dummyBuffer;
+    if (!audioQueryResponse.ok) {
+      throw new Error(`Audio query failed: HTTP ${audioQueryResponse.status}`);
+    }
+
+    const audioQuery = await audioQueryResponse.json();
+
+    // 2. synthesis APIで音声データを生成
+    const synthesisResponse = await fetch(`${apiUrl}/synthesis?speaker=${speakerId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(audioQuery)
+    });
+
+    if (!synthesisResponse.ok) {
+      throw new Error(`Audio synthesis failed: HTTP ${synthesisResponse.status}`);
+    }
+
+    const audioBuffer = await synthesisResponse.arrayBuffer();
+
+    return {
+      audio: audioBuffer,
+      duration: audioQuery.outputSamplingRate ? audioBuffer.byteLength / (audioQuery.outputSamplingRate * 2) : 1.0
+    };
   } catch (error) {
     throw new Error(`Audio synthesis failed: ${error}`);
   }
@@ -142,25 +201,54 @@ const playAudioService = fromPromise(async ({ input }: {
     audioBuffers: ArrayBuffer[];
   }
 }) => {
-  // モック音声再生処理
   const { audioBuffers } = input;
 
-  // 実際の実装では、Web Audio APIを使用して音声を再生
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  // モックモード判定（ブラウザ環境でない場合もモック扱い）
+  const isMock = typeof window === 'undefined' || process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
+  if (isMock) {
+    // モック音声再生処理
+    // 合計再生時間を推定して待機
+    const estimatedDuration = audioBuffers.reduce((total, buffer) => {
+      // バッファサイズから推定再生時間を計算
+      const sampleRate = 24000;
+      const bytesPerSample = 2;
+      const duration = buffer.byteLength / (sampleRate * bytesPerSample);
+      return total + duration;
+    }, 0);
+
+    console.log(`Mock playing ${audioBuffers.length} audio chunks (estimated ${estimatedDuration.toFixed(1)}s)`);
+
+    // 推定時間分待機（最低1秒、最大10秒）
+    const playbackTime = Math.max(1000, Math.min(10000, estimatedDuration * 1000));
+    await new Promise(resolve => setTimeout(resolve, playbackTime));
+
+    return { played: audioBuffers.length, duration: estimatedDuration };
+  }
+
+  // 実際のWeb Audio API実装
   try {
-    // 実装例:
-    // const audioContext = new AudioContext();
-    // for (const buffer of audioBuffers) {
-    //   const audioBuffer = await audioContext.decodeAudioData(buffer.slice(0));
-    //   const source = audioContext.createBufferSource();
-    //   source.buffer = audioBuffer;
-    //   source.connect(audioContext.destination);
-    //   source.start();
-    //   await waitForAudioEnd(source);
-    // }
+    const audioContext = new AudioContext();
+    let totalDuration = 0;
 
-    console.log(`Played ${audioBuffers.length} audio chunks`);
+    for (const buffer of audioBuffers) {
+      const audioBuffer = await audioContext.decodeAudioData(buffer.slice(0));
+      totalDuration += audioBuffer.duration;
+
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
+      source.start();
+
+      // 音声の再生完了を待つ
+      await new Promise(resolve => {
+        source.onended = resolve;
+        setTimeout(resolve, audioBuffer.duration * 1000 + 100); // タイムアウト保護
+      });
+    }
+
+    console.log(`Played ${audioBuffers.length} audio chunks (total: ${totalDuration.toFixed(1)}s)`);
+    return { played: audioBuffers.length, duration: totalDuration };
   } catch (error) {
     throw new Error(`Audio playback failed: ${error}`);
   }
@@ -393,13 +481,14 @@ export const voicevoxMachine = setup({
         },
         onDone: [
           {
-            target: '.', // 内部遷移で再実行を保証
+            target: 'processing_next_chunk',
             guard: 'hasMoreChunksGuard',
-            reenter: true, // XState v5: 状態の再入を明示的に指定
             actions: [
               {
                 type: 'storeAudioBufferAction',
-                params: ({ event }) => ({ audioBuffer: event.output })
+                params: ({ event }) => ({
+                  audioBuffer: event.output.audio || event.output
+                })
               },
               'updateProgressAction'
             ]
@@ -410,7 +499,9 @@ export const voicevoxMachine = setup({
             actions: [
               {
                 type: 'storeAudioBufferAction',
-                params: ({ event }) => ({ audioBuffer: event.output })
+                params: ({ event }) => ({
+                  audioBuffer: event.output.audio || event.output
+                })
               },
               'updateProgressAction'
             ]
@@ -425,26 +516,12 @@ export const voicevoxMachine = setup({
             })
           }
         }
-      },
-      on: {
-        // synthesizing状態内での内部遷移を追加
-        CHUNK_COMPLETE: {
-          target: '.', // 内部遷移（自分自身への遷移）
-          guard: 'hasMoreChunksGuard',
-          reenter: true, // サービスの再実行を保証
-          actions: 'updateProgressAction'
-        },
-        ALL_COMPLETE: {
-          target: 'playing',
-          guard: 'allChunksCompleteGuard'
-        },
-        FAILURE: {
-          target: 'error',
-          actions: {
-            type: 'setErrorAction',
-            params: ({ event }) => ({ error: event.error })
-          }
-        }
+      }
+    },
+    processing_next_chunk: {
+      always: {
+        target: 'synthesizing',
+        guard: 'hasMoreChunksGuard'
       }
     },
     playing: {

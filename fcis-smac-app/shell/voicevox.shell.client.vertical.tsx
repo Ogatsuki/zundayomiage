@@ -382,12 +382,37 @@ const checkConnection = async (
 
 // ===== useVoicevoxSynthesis Hook実装 =====
 
-export function useVoicevoxSynthesis(): VoiceSynthesisContract {
+/**
+ * useVoicevoxSynthesis Hook
+ *
+ * @param options - オプション設定
+ * @param options.apiUrl - VOICEVOX API URL（オプション、環境変数またはデフォルト値を使用）
+ */
+export function useVoicevoxSynthesis(options: {
+  apiUrl?: string;
+} = {}): VoiceSynthesisContract {
+  // 環境変数からAPIのURLを取得
+  const apiUrl = options.apiUrl ||
+    process.env.NEXT_PUBLIC_VOICEVOX_API_URL ||
+    'http://localhost:50021';
+  const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+  // モックモード時はAPIのURLをnullにする
+  const effectiveApiUrl = isMockMode ? null : apiUrl;
+
   const [state, send] = useMachine(
     voicevoxMachine.provide({
       actors: {
         connectService: fromPromise(async ({ input }: { input: { apiUrl: string } }) => {
           try {
+            // モックモード時は即座に成功を返す
+            if (isMockMode || !effectiveApiUrl) {
+              return {
+                isConnected: true,
+                version: '0.14.0-mock',
+                serverUrl: 'mock://voicevox'
+              };
+            }
             return await checkConnection(input.apiUrl);
           } catch (error) {
             logVoicevoxError('connectService', error, `Attempting connection to: ${input.apiUrl}`);
@@ -402,8 +427,17 @@ export function useVoicevoxSynthesis(): VoiceSynthesisContract {
             console.log(`[VoiceVox Shell] synthesizeService: Starting synthesis`, {
               textPreview: text.substring(0, 50) + '...',
               speakerId,
+              mockMode: isMockMode,
               timestamp: new Date().toISOString()
             });
+
+            // モックモード時はダミーデータを返す
+            if (isMockMode || !effectiveApiUrl) {
+              await new Promise(resolve => setTimeout(resolve, 1000)); // モック遅延
+              const dummyBuffer = new ArrayBuffer(44100 * 2); // 1秒分のダミー音声データ
+              return dummyBuffer;
+            }
+
             const audioQuery = await fetchAudioQuery(text, speakerId, apiUrl);
             const audioBuffer = await synthesizeAudio(audioQuery, speakerId, apiUrl);
             return audioBuffer;

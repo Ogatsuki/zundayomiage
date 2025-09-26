@@ -128,7 +128,7 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
           placeholder="ここに読み上げたいテキストを入力してください..."
-          className={`w-full h-24 sm:h-32 px-2 sm:px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 transition-colors text-sm sm:text-base ${
+          className={`w-full min-h-[100px] sm:min-h-[150px] px-2 sm:px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 transition-colors text-sm sm:text-base ${
             isOverLimit
               ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
               : text.trim().length > 0

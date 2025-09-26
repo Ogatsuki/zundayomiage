@@ -77,7 +77,8 @@ export default function Home() {
     return {
       percentage: progress.percentage,
       processedChunks: progress.processedChunks,
-      totalChunks: progress.totalChunks
+      totalChunks: progress.totalChunks,
+      startTime: progress.startTime // タイムアウト検知用のタイムスタンプ
     };
   };
 
@@ -124,6 +125,7 @@ export default function Home() {
               progress={getProgress()}
               error={getError()}
               onRetry={handleRetry}
+              onReset={handleReset}
               className="w-full"
             />
           </div>
@@ -165,10 +167,10 @@ export default function Home() {
             <div className="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-200">
               <h3 className="font-bold text-green-800 mb-2 text-sm sm:text-base">💡 使い方</h3>
               <div className="text-xs sm:text-sm text-green-700 space-y-1">
-                <p>1. 左側のテキスト入力欄に読み上げたいテキストを入力</p>
+                <p>1. <span className="hidden md:inline">左側</span><span className="md:hidden">上部</span>のテキスト入力欄に読み上げたいテキストを入力</p>
                 <p>2. 話者を選択（デフォルト: ずんだもん通常）</p>
                 <p>3. 「開始」ボタンを押すか、Ctrl+Enterで音声合成開始</p>
-                <p>4. 右側で合成処理の進捗と状態を確認</p>
+                <p>4. <span className="hidden md:inline">右側</span><span className="md:hidden">下部</span>で合成処理の進捗と状態を確認</p>
               </div>
             </div>
           </div>
