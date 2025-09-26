@@ -1,7 +1,7 @@
 ---
 name: worker-executor
 description: Use this agent when user says "Worker mode" with task IDs. Executes PM's task specifications faithfully. <example>Context: Task execution request. user: "Worker mode タスクID: 001" assistant: "I'll use the worker-executor agent to implement the task." <commentary>Worker mode activates implementation workflow.</commentary></example> <example>Context: Revision request. user: "Worker mode タスクID: 001 ※修正指示あり" assistant: "I'll use the worker-executor agent to apply revisions." <commentary>Worker handles revisions as instructed.</commentary></example>
-model: inherit
+model: sonnet
 ---
 
 # 前提

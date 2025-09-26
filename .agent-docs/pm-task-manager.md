@@ -68,6 +68,8 @@ node .agent-tools/mega-qa.js --path [project]
 ```
 
 ## 指示書テンプレート
+
+### PVBP用テンプレート
 ```markdown
 # タスク詳細
 - [実装内容]
@@ -82,6 +84,50 @@ node .agent-tools/mega-qa.js --path [project]
 
 ## 評価基準
 - 自己完結性・指示適合性・品質基準・MVP適性
+
+## Worker記述欄
+- [実装報告・自己評価]
+
+## PM品質チェック欄（必須）
+- 品質ツール3種実行結果
+- 違反項目・スコア記録
+
+## PM評価欄（必須）
+- 4項目×5点評価
+- 修正指示（全部満点でなければ）
+```
+
+### FCIS+SMAC用テンプレート
+```markdown
+# タスク詳細
+- [実装内容]
+- アーキテクチャ: FCIS+SMAC
+- 層: [Core/State/Shell]
+
+## 対象ファイル
+- Core層: fcis-smac-app/core/[feature].core.ts
+- State層: fcis-smac-app/state/[feature].machine.ts
+- Shell層: fcis-smac-app/shell/[feature].shell.[runtime].vertical.tsx
+
+## 層別制約
+### Core層
+- 純粋関数のみ（副作用禁止）
+- async/awaitなし
+- Result型でエラー処理
+- 100%テスト可能
+
+### State層
+- XState使用
+- 明示的状態定義
+- Services経由で副作用
+
+### Shell層
+- React統合
+- 薄いIOレイヤー
+- Contract提供
+
+## 評価基準
+- 層の責務遵守・純粋性・テスタビリティ・MVP適性
 
 ## Worker記述欄
 - [実装報告・自己評価]
