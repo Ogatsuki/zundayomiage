@@ -160,29 +160,28 @@ AI: [validator modeで動作、検証結果表示]
 
 ### 複雑なタスク（FCIS+SMAC準拠の並列実行）
 ```
+# 計画生成フェーズ（現在のセッション）
 ユーザー: parallel plan: voicevoxエラー修正とstatus-display新機能追加
 AI: [FCIS+SMAC並列実行計画を生成]
 
 出力:
 ---
-[Session 1 - Opus]
+[Session 1 - Opus推奨]
 機能: voicevox
-層: Core
-タスク: Result型エラー修正（純粋関数）
+タスク: Result型エラー修正（全層対応）
+指示: investigate → implement → validate
 
-[Session 2 - Opus]
+[Session 2 - Opus推奨]
 機能: status-display
-層: Full-Stack
-タスク: 新機能の全層実装（独立機能）
-
-[Session 3 - Sonnet]
-機能: voicevox
-層: State→Shell
-タスク: Session1完了後、状態遷移とReact統合更新
-依存: Session1
+タスク: 新機能の全層実装
+指示: implement → validate
 ---
 
-ユーザー: [3つのClaude Codeセッション起動、計画に従って実行]
+# 実行フェーズ（ユーザーが新規セッション起動）
+ユーザー: [2つの新しいClaude Codeセッションを起動]
+- Session 1で: "voicevoxのResult型エラーを修正"
+- Session 2で: "status-displayの新機能を実装"
+各セッション: 独立して作業を完結
 ```
 
 ## 注意事項

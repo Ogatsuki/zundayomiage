@@ -1,0 +1,11 @@
+name: zundayomiage-project
+services:
+  app:
+    container_name: zundayomiage-app
+    image: dev-base:latest
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    tty: true

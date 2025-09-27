@@ -14,9 +14,65 @@ fcis-smac-app:アプリ(開発中アプリ)
 tsd-107-spec:仕様書等
 
 ## triger word
-### PM mode（管理層）
-triger: "PM mode"
-action: '.agent-docs/pm-task-manager.md'の内容に従ってタスク管理を実行
+
+### モード管理システム（FCIS+SMAC準拠）
+
+#### investigate mode（調査モード）
+trigger: "investigate" / "調査"
+action: '.modes/investigator.md'の内容に従って調査実行
+- エラー分析、影響範囲調査、実装方針提案
+- Core/State/Shell層の問題特定
+
+#### worker mode（実装モード）
+trigger: "worker" / "実装"
+action: '.modes/worker.md'の内容に従って実装
+- 忠実な実装、エラー修正、リファクタリング
+- FCIS+SMACアーキテクチャ準拠
+
+#### validator mode（検証モード）
+trigger: "validate" / "検証"
+action: '.modes/validator.md'の内容に従って品質検証
+- ビルド確認、テスト実行、品質評価
+- 層間の整合性確認
+
+### FCIS+SMAC並列化プロトコル
+
+#### parallel plan（並列計画・ハイブリッド方式）
+trigger: "parallel plan: [タスク]" / "並列計画: [タスク]"
+action: '.modes/parallel-plan-template.md'に従い、調査統合型の並列実行計画を生成
+
+**実行フロー（セッション1で実行）**:
+1. **自動調査フェーズ**（investigator統合）
+   - エラー原因の根本分析
+   - FCIS+SMAC層別の影響範囲特定
+   - 既存コードの依存関係把握
+
+2. **全体設計フェーズ**
+   - アーキテクチャレベルの設計決定
+   - 層間のインターフェース・契約定義
+   - 共通型定義とタスク間依存関係の明確化
+
+3. **タスク分割と指示書生成**
+   - 垂直分割優先（機能単位で独立タスク化）
+   - 各セッション用の独立指示書を生成：
+     - `./parallel-sessions/session-a.md`
+     - `./parallel-sessions/session-b.md`
+     - `./parallel-sessions/session-c.md`
+
+4. **出力形式**
+   - 各Claude Codeセッション用の完結した指示文
+   - コピペ可能な形式で明確に区切って表示
+
+**並列セッション（A,B,C）での実行**:
+- 各セッションは受け取った指示書に基づき自律的に：
+  1. 詳細実装計画（契約内での最適解探索）
+  2. FCIS+SMAC準拠の実装
+  3. 検証（validator相当の品質確認）
+
+### PM mode（非推奨）
+trigger: "PM mode"
+action: 非推奨 - 代わりに「parallel plan」を使用してください
+- '.agent-docs/pm-task-manager.md'は履歴として保持
 
 ### set up(仕様キャッチアップ)
 triger: "set up"
