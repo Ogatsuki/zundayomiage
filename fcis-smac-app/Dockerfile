@@ -22,8 +22,11 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck and ffmpeg for audio processing
+RUN apk add --no-cache curl ffmpeg
+
+# Tesseract.js configuration
+ENV TESSDATA_PREFIX=/usr/share/tessdata
 
 # Copy built application
 COPY --from=builder /app/package*.json ./

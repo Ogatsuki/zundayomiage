@@ -37,7 +37,7 @@ export const failure = <E>(error: E): Result<never, E> => ({
 /**
  * ブランド型ヘルパー
  */
-type Brand<T, B> = T & { __brand: B };
+export type Brand<T, B> = T & { __brand: B };
 
 /**
  * 検証済みテキスト型
@@ -173,8 +173,10 @@ export type TimeoutError = {
 // ===== 定数 =====
 
 const MAX_TEXT_LENGTH = 100_000;
+const MAX_EXTENDED_TEXT_LENGTH = 30_000; // 30,000文字対応
 const DEFAULT_CHUNK_SIZE = 200;
-const VALID_SPEAKER_IDS = [3];
+const DEFAULT_EXTENDED_CHUNK_SIZE = 500; // 500文字チャンク
+const VALID_SPEAKER_IDS = [2, 3]; // 四国めたん、ずんだもん
 const SENTENCE_DELIMITERS = ['。', '！', '？', '!', '?', '.'];
 const PROGRESS_MIN = 0;
 const PROGRESS_MAX = 100;
@@ -591,4 +593,301 @@ export const flatMapResult = <T, U, E>(
     return result as Result<U, E>;
   }
   return fn((result as { success: true; value: T }).value);
+};
+
+// ===== 拡張Core関数群（30,000文字対応 & OCR処理） =====
+
+/**
+ * 拡張テキスト検証済み型
+ */
+export type ExtendedValidText = Brand<string, 'ExtendedValidText'>;
+
+/**
+ * OCR正規化エラー型
+ */
+export type OCRNormalizationError =
+  | { type: 'INVALID_OCR_FORMAT'; message: string }
+  | { type: 'NORMALIZATION_FAILED'; message: string; issues: string[] };
+
+/**
+ * 拡張チャンク型
+ */
+export type ExtendedChunk = {
+  index: number;
+  text: string;
+  size: number;
+  startOffset: number;
+  endOffset: number;
+  estimatedDuration: number;
+};
+
+/**
+ * 14. 30,000文字バリデーション関数
+ * 30,000文字制限でテキストを検証
+ */
+export const validateExtendedText = (text: string): Result<ExtendedValidText, ValidationError> => {
+  // 空文字チェック
+  if (text.trim().length === 0) {
+    return failure({
+      type: 'EMPTY_TEXT',
+      message: 'テキストが空です'
+    });
+  }
+
+  // 30,000文字制限チェック
+  if (text.length > MAX_EXTENDED_TEXT_LENGTH) {
+    return failure({
+      type: 'TEXT_TOO_LONG',
+      message: `テキストが長すぎます。最大${MAX_EXTENDED_TEXT_LENGTH}文字まで`,
+      maxLength: MAX_EXTENDED_TEXT_LENGTH
+    });
+  }
+
+  // 検証済みテキストとして返す
+  return success(text as ExtendedValidText);
+};
+
+/**
+ * 15. 500文字チャンク分割関数
+ * ExtendedValidTextを500文字のチャンクに分割
+ * 句読点を考慮して自然な区切りで分割
+ */
+export const splitIntoExtendedChunks = (
+  validText: ExtendedValidText,
+  chunkSize: number = DEFAULT_EXTENDED_CHUNK_SIZE
+): ExtendedChunk[] => {
+  const text = validText as string;
+  const chunks: ExtendedChunk[] = [];
+  let currentPos = 0;
+  let chunkIndex = 0;
+
+  while (currentPos < text.length) {
+    let endPos = Math.min(currentPos + chunkSize, text.length);
+
+    // 末尾が文字の途中でない場合、句読点で区切る
+    if (endPos < text.length) {
+      // 理想的な分割点を後方検索
+      let idealBreakPos = endPos;
+      for (let i = endPos - 1; i > currentPos + chunkSize * 0.7; i--) {
+        if (SENTENCE_DELIMITERS.includes(text[i])) {
+          idealBreakPos = i + 1;
+          break;
+        }
+      }
+      endPos = idealBreakPos;
+    }
+
+    const chunkText = text.slice(currentPos, endPos);
+    const chunk: ExtendedChunk = {
+      index: chunkIndex,
+      text: chunkText,
+      size: chunkText.length,
+      startOffset: currentPos,
+      endOffset: endPos,
+      estimatedDuration: 0  // 一時的な値、後で計算される
+    };
+
+    // 推定再生時間を計算
+    chunk.estimatedDuration = estimateChunkDuration(chunk);
+
+    chunks.push(chunk);
+
+    currentPos = endPos;
+    chunkIndex++;
+  }
+
+  return chunks;
+};
+
+/**
+ * 16. OCRテキスト正規化関数（日本語特化）
+ * OCRで誤認識されやすい文字を修正
+ */
+export const normalizeOCRText = (text: string): Result<string, OCRNormalizationError> => {
+  try {
+    let normalized = text;
+
+    // 全角・半角の統一
+    // 半角カナを全角カナに変換
+    const halfToFullKana: { [key: string]: string } = {
+      'ｱ': 'ア', 'ｲ': 'イ', 'ｳ': 'ウ', 'ｴ': 'エ', 'ｵ': 'オ',
+      'ｶ': 'カ', 'ｷ': 'キ', 'ｸ': 'ク', 'ｹ': 'ケ', 'ｺ': 'コ',
+      'ｻ': 'サ', 'ｼ': 'シ', 'ｽ': 'ス', 'ｾ': 'セ', 'ｿ': 'ソ',
+      'ﾀ': 'タ', 'ﾁ': 'チ', 'ﾂ': 'ツ', 'ﾃ': 'テ', 'ﾄ': 'ト',
+      'ﾅ': 'ナ', 'ﾆ': 'ニ', 'ﾇ': 'ヌ', 'ﾈ': 'ネ', 'ﾉ': 'ノ',
+      'ﾊ': 'ハ', 'ﾋ': 'ヒ', 'ﾌ': 'フ', 'ﾍ': 'ヘ', 'ﾎ': 'ホ',
+      'ﾏ': 'マ', 'ﾐ': 'ミ', 'ﾑ': 'ム', 'ﾒ': 'メ', 'ﾓ': 'モ',
+      'ﾔ': 'ヤ', 'ﾕ': 'ユ', 'ﾖ': 'ヨ',
+      'ﾗ': 'ラ', 'ﾘ': 'リ', 'ﾙ': 'ル', 'ﾚ': 'レ', 'ﾛ': 'ロ',
+      'ﾜ': 'ワ', 'ｦ': 'ヲ', 'ﾝ': 'ン',
+      'ｧ': 'ァ', 'ｨ': 'ィ', 'ｩ': 'ゥ', 'ｪ': 'ェ', 'ｫ': 'ォ',
+      'ｬ': 'ャ', 'ｭ': 'ュ', 'ｮ': 'ョ', 'ｯ': 'ッ',
+      'ｰ': 'ー', 'ﾞ': '゛', 'ﾟ': '゜'
+    };
+
+    for (const [half, full] of Object.entries(halfToFullKana)) {
+      normalized = normalized.replace(new RegExp(half, 'g'), full);
+    }
+
+    // OCR特有の誤認識パターン修正
+    const ocrCorrections: { [key: string]: string } = {
+      // 類似文字の修正
+      '０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
+      '５': '5', '６': '6', '７': '7', '８': '8', '９': '9',
+      'Ｏ': 'O', 'ｏ': 'o', 'О': 'O', // 全角O、小文字o、キリル文字O
+      'ｌ': 'l', // 全角小文字L
+      'ー': 'ー', '―': 'ー', '‐': 'ー', // 長音記号の統一
+      '～': '〜', // 波線の統一
+    };
+
+    for (const [wrong, correct] of Object.entries(ocrCorrections)) {
+      normalized = normalized.replace(new RegExp(wrong, 'g'), correct);
+    }
+
+    // 不要な空白・改行の除去
+    normalized = normalized
+      .replace(/\r\n/g, '\n') // CRLF -> LF
+      .replace(/\r/g, '\n') // CR -> LF
+      .replace(/\n{3,}/g, '\n\n') // 3つ以上の改行を2つに
+      .replace(/[ 　]{2,}/g, ' ') // 連続する空白を1つに
+      .trim();
+
+    // 句読点の修正
+    normalized = normalized
+      .replace(/､/g, '、') // 読点の統一
+      .replace(/｡/g, '。') // 句点の統一
+      .replace(/([。！？])\s*([^」』）】〉》〕］｝\n])/g, '$1\n$2'); // 句読点後の改行
+
+    return success(normalized);
+  } catch (error) {
+    return failure({
+      type: 'NORMALIZATION_FAILED',
+      message: 'OCRテキストの正規化に失敗しました',
+      issues: [error instanceof Error ? error.message : String(error)]
+    });
+  }
+};
+
+/**
+ * 17. 話者情報管理関数
+ * 話者IDから話者情報を取得
+ */
+export type SpeakerInfo = {
+  id: number;
+  name: string;
+  styles: Array<{ id: number; name: string }>;
+};
+
+const SPEAKER_DATABASE: Map<number, SpeakerInfo> = new Map([
+  [3, {
+    id: 3,
+    name: 'ずんだもん',
+    styles: [
+      { id: 3, name: 'ノーマル' },
+      { id: 7, name: 'ささやき' },
+      { id: 22, name: 'ひそひそ' }
+    ]
+  }],
+  [2, {
+    id: 2,
+    name: '四国めたん',
+    styles: [
+      { id: 2, name: 'ノーマル' },
+      { id: 0, name: 'あまあま' },
+      { id: 6, name: 'ツンツン' }
+    ]
+  }]
+]);
+
+export const getSpeakerInfo = (speakerId: number): SpeakerInfo | null => {
+  return SPEAKER_DATABASE.get(speakerId) || null;
+};
+
+/**
+ * 18. 話者ID検証関数（四国めたん対応）
+ */
+export const validateSpeakerId = (speakerId: number): boolean => {
+  return VALID_SPEAKER_IDS.includes(speakerId);
+};
+
+/**
+ * 19. チャンク推定再生時間計算関数
+ * テキストの長さから推定再生時間を計算
+ */
+export const estimateChunkDuration = (chunk: ExtendedChunk): number => {
+  // 日本語の平均読み上げ速度: 約300-400文字/分
+  // 保守的に350文字/分で計算
+  const charactersPerMinute = 350;
+  const charactersPerSecond = charactersPerMinute / 60;
+
+  // 句読点による追加の間
+  const pauseCount = (chunk.text.match(/[。、！？]/g) || []).length;
+  const pauseDuration = pauseCount * 0.2; // 句読点ごとに0.2秒の間
+
+  const baseDuration = chunk.size / charactersPerSecond;
+  return baseDuration + pauseDuration;
+};
+
+/**
+ * 20. WAVヘッダー検証関数
+ * WAVフォーマットのヘッダーを検証
+ */
+export const validateWAVHeader = (buffer: ArrayBuffer): boolean => {
+  if (buffer.byteLength < 44) {
+    return false; // WAVヘッダーの最小サイズ
+  }
+
+  const view = new DataView(buffer);
+
+  // "RIFF"チェック
+  const riff = String.fromCharCode(
+    view.getUint8(0),
+    view.getUint8(1),
+    view.getUint8(2),
+    view.getUint8(3)
+  );
+
+  if (riff !== 'RIFF') {
+    return false;
+  }
+
+  // "WAVE"チェック
+  const wave = String.fromCharCode(
+    view.getUint8(8),
+    view.getUint8(9),
+    view.getUint8(10),
+    view.getUint8(11)
+  );
+
+  return wave === 'WAVE';
+};
+
+/**
+ * 21. エラーリトライ判定関数
+ * エラーの種類と試行回数からリトライ可否を判定
+ */
+export const shouldRetryError = (error: Error, attemptCount: number, maxAttempts: number = 3): boolean => {
+  if (attemptCount >= maxAttempts) {
+    return false;
+  }
+
+  const errorType = detectErrorType(error);
+
+  // ネットワークエラーと音声合成エラーはリトライ可能
+  return errorType === 'NETWORK' || errorType === 'SYNTHESIS';
+};
+
+/**
+ * 22. リトライ遅延計算関数
+ * エクスポネンシャルバックオフでリトライ遅延を計算
+ */
+export const calculateRetryDelay = (
+  attemptCount: number,
+  baseDelay: number = 1000,
+  maxDelay: number = 30000
+): number => {
+  const delay = Math.min(baseDelay * Math.pow(2, attemptCount - 1), maxDelay);
+  // ジッターを追加（±20%）
+  const jitter = delay * 0.2 * (Math.random() - 0.5);
+  return Math.round(delay + jitter);
 };

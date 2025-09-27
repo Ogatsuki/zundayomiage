@@ -63,11 +63,11 @@ action: '.modes/parallel-plan-template.md'に従い、調査統合型の並列�
    - 各Claude Codeセッション用の完結した指示文
    - コピペ可能な形式で明確に区切って表示
 
-**並列セッション（A,B,C）での実行**:
+**並列セッション（A,B,C,...）での実行**:
 - 各セッションは受け取った指示書に基づき自律的に：
   1. 詳細実装計画（契約内での最適解探索）
   2. FCIS+SMAC準拠の実装
-  3. 検証（validator相当の品質確認）
+  3. 検証（validatorの品質確認を行う）
 
 ### PM mode（非推奨）
 trigger: "PM mode"
