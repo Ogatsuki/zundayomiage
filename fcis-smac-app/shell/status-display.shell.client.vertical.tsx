@@ -6,7 +6,6 @@
  *
  * 責務:
  * - 純粋表示コンポーネント（副作用なし）
- * - 接続状態インジケーター表示
  * - 音声合成進行状況バー表示
  * - エラー状態とリトライボタン表示
  * - 合成状態表示（アイドル、合成中、再生中等）
@@ -17,8 +16,7 @@ import React from 'react';
 
 // ===== Contract Definition =====
 export interface StatusDisplayContract {
-  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
-  synthesisState: 'idle' | 'synthesizing' | 'playing' | 'completed' | 'error';
+  synthesisState: 'idle' | 'synthesizing' | 'completed' | 'error';
   progress: {
     percentage: number;
     processedChunks: number;
@@ -36,62 +34,6 @@ export interface StatusDisplayContract {
 
 // ===== Component Implementation =====
 
-/**
- * 接続状態インジケーター
- */
-interface ConnectionIndicatorProps {
-  status: StatusDisplayContract['connectionStatus'];
-}
-
-const ConnectionIndicator: React.FC<ConnectionIndicatorProps> = ({ status }) => {
-  const getStatusConfig = () => {
-    switch (status) {
-      case 'disconnected':
-        return {
-          color: 'bg-gray-400',
-          text: '未接続',
-          textColor: 'text-gray-600',
-          animate: false
-        };
-      case 'connecting':
-        return {
-          color: 'bg-yellow-400',
-          text: '接続中',
-          textColor: 'text-yellow-700',
-          animate: true
-        };
-      case 'connected':
-        return {
-          color: 'bg-green-500',
-          text: '接続済み',
-          textColor: 'text-green-700',
-          animate: false
-        };
-      case 'error':
-        return {
-          color: 'bg-red-500',
-          text: '接続エラー',
-          textColor: 'text-red-700',
-          animate: false
-        };
-    }
-  };
-
-  const config = getStatusConfig();
-
-  return (
-    <div className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
-      <div
-        className={`w-3 h-3 rounded-full ${config.color} ${
-          config.animate ? 'animate-pulse' : ''
-        }`}
-      />
-      <span className={`text-xs sm:text-sm font-medium ${config.textColor}`}>
-        VOICEVOXサーバー: {config.text}
-      </span>
-    </div>
-  );
-};
 
 /**
  * 進行状況バー
@@ -178,17 +120,9 @@ const SynthesisStateIndicator: React.FC<SynthesisStateIndicatorProps> = ({ state
           icon: '⚙️',
           animate: true
         };
-      case 'playing':
-        return {
-          color: 'bg-green-600',
-          text: '再生中',
-          textColor: 'text-green-800',
-          icon: '🔊',
-          animate: true
-        };
       case 'completed':
         return {
-          color: 'bg-green-700',
+          color: 'bg-green-600',
           text: '完了',
           textColor: 'text-green-800',
           icon: '✅',
@@ -240,12 +174,11 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, onReset }) 
   const getErrorHelp = (errorCode: string) => {
     switch (errorCode) {
       case 'NETWORK':
-      case 'CONNECTION_FAILED':
         return {
           title: 'ネットワークエラー',
-          message: 'VOICEVOXサーバーに接続できません',
-          help: 'VOICEVOXが起動していることを確認してください。',
-          actions: ['VOICEVOXを起動する', '設定を確認する'],
+          message: 'ネットワーク接続に問題があります',
+          help: 'インターネット接続を確認してください。',
+          actions: ['接続を確認する', '再試行する'],
           icon: '🌐'
         };
       case 'TIMEOUT':
@@ -264,13 +197,13 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, onReset }) 
           actions: ['話者を変更する', '内容を確認する'],
           icon: '🎤'
         };
-      case 'AUDIO_PLAY_FAILED':
+      case 'AUDIO_DOWNLOAD_FAILED':
         return {
-          title: '音声再生エラー',
-          message: '音声の再生に失敗しました',
-          help: 'ブラウザの音声設定やデバイスを確認してください。',
-          actions: ['音量を確認する', 'ブラウザを更新する'],
-          icon: '🔊'
+          title: '音声ダウンロードエラー',
+          message: '音声のダウンロードに失敗しました',
+          help: 'ブラウザの設定やファイル保存場所を確認してください。',
+          actions: ['再試行する', 'ブラウザを更新する'],
+          icon: '📥'
         };
       case 'INVALID_SPEAKER':
         return {
@@ -377,7 +310,6 @@ export interface StatusDisplayProps extends StatusDisplayContract {
 }
 
 export const StatusDisplay: React.FC<StatusDisplayProps> = ({
-  connectionStatus,
   synthesisState,
   progress,
   error,
@@ -387,9 +319,6 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = ({
 }) => {
   return (
     <div className={`status-display space-y-3 sm:space-y-4 ${className}`}>
-      {/* 接続状態インジケーター */}
-      <ConnectionIndicator status={connectionStatus} />
-
       {/* 合成状態インジケーター */}
       <SynthesisStateIndicator state={synthesisState} />
 

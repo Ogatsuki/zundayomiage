@@ -52,6 +52,7 @@ export interface VoiceSynthesisContract {
 
   // Audio output
   getFinalAudio: () => Blob | null;
+  downloadAudio: (filename?: string) => void;
 
   // Retry functionality
   retryLastSynthesis: () => void;

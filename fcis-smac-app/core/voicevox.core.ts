@@ -174,7 +174,7 @@ export type TimeoutError = {
 
 const MAX_TEXT_LENGTH = 100_000;
 const DEFAULT_CHUNK_SIZE = 200;
-const VALID_SPEAKER_IDS = [2, 3];
+const VALID_SPEAKER_IDS = [3];
 const SENTENCE_DELIMITERS = ['。', '！', '？', '!', '?', '.'];
 const PROGRESS_MIN = 0;
 const PROGRESS_MAX = 100;
@@ -561,7 +561,10 @@ export const unwrap = <T, E>(result: Result<T, E>): T | null => {
  * Result型のエラーを安全に取得
  */
 export const unwrapError = <T, E>(result: Result<T, E>): E | null => {
-  return result.success ? null : result.error;
+  if (!result.success) {
+    return (result as { success: false; error: E }).error;
+  }
+  return null;
 };
 
 /**
@@ -571,7 +574,10 @@ export const mapResult = <T, U, E>(
   result: Result<T, E>,
   fn: (value: T) => U
 ): Result<U, E> => {
-  return result.success ? success(fn(result.value)) : result;
+  if (!result.success) {
+    return result as Result<U, E>;
+  }
+  return success(fn((result as { success: true; value: T }).value));
 };
 
 /**
@@ -581,5 +587,8 @@ export const flatMapResult = <T, U, E>(
   result: Result<T, E>,
   fn: (value: T) => Result<U, E>
 ): Result<U, E> => {
-  return result.success ? fn(result.value) : result;
+  if (!result.success) {
+    return result as Result<U, E>;
+  }
+  return fn((result as { success: true; value: T }).value);
 };

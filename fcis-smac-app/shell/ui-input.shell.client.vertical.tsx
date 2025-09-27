@@ -24,13 +24,10 @@ export interface UIInputContract {
 }
 
 // ===== 定数定義 =====
-const MAX_CHARS = 1000;
+const MAX_CHARS = 100000;
 
 const SPEAKER_OPTIONS = [
-  { id: 3, name: 'ずんだもん（通常）' },
-  { id: 1, name: 'ずんだもん（あまあま）' },
-  { id: 7, name: 'ずんだもん（ツンツン）' },
-  { id: 5, name: 'ずんだもん（セクシー）' }
+  { id: 3, name: 'ずんだもん（通常）' }
 ];
 
 // ===== UIInputComponent実装 =====
@@ -136,7 +133,7 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
               : 'border-gray-300 focus:border-green-500 focus:ring-green-200'
           }`}
           disabled={disabled}
-          maxLength={MAX_CHARS + 100} // 制限を少し超えても入力できるようにして、UIでエラー表示
+          maxLength={MAX_CHARS + 1000} // 制限を少し超えても入力できるようにして、UIでエラー表示
         />
 
         {/* 文字数表示 */}

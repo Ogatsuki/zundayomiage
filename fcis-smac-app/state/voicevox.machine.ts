@@ -150,10 +150,7 @@ const synthesizeService = fromPromise(async ({ input }: {
 
     const audioBuffer = new ArrayBuffer(bufferSize);
 
-    return {
-      audio: audioBuffer,
-      duration: estimatedDuration
-    };
+    return audioBuffer;
   }
 
   // 実際のAPI呼び出し
@@ -187,10 +184,7 @@ const synthesizeService = fromPromise(async ({ input }: {
 
     const audioBuffer = await synthesisResponse.arrayBuffer();
 
-    return {
-      audio: audioBuffer,
-      duration: audioQuery.outputSamplingRate ? audioBuffer.byteLength / (audioQuery.outputSamplingRate * 2) : 1.0
-    };
+    return audioBuffer;
   } catch (error) {
     throw new Error(`Audio synthesis failed: ${error}`);
   }
@@ -487,20 +481,20 @@ export const voicevoxMachine = setup({
               {
                 type: 'storeAudioBufferAction',
                 params: ({ event }) => ({
-                  audioBuffer: event.output.audio || event.output
+                  audioBuffer: event.output
                 })
               },
               'updateProgressAction'
             ]
           },
           {
-            target: 'playing',
+            target: 'completed',
             guard: 'allChunksCompleteGuard',
             actions: [
               {
                 type: 'storeAudioBufferAction',
                 params: ({ event }) => ({
-                  audioBuffer: event.output.audio || event.output
+                  audioBuffer: event.output
                 })
               },
               'updateProgressAction'
@@ -524,31 +518,15 @@ export const voicevoxMachine = setup({
         guard: 'hasMoreChunksGuard'
       }
     },
-    playing: {
-      invoke: {
-        src: 'playAudioService',
-        input: ({ context }) => ({
-          audioBuffers: context.audioBuffers
-        }),
-        onDone: {
-          target: 'connected'
-        },
-        onError: {
-          target: 'error',
-          actions: {
-            type: 'setErrorAction',
-            params: ({ event }) => ({
-              error: event.error instanceof Error ? event.error.message : String(event.error)
-            })
-          }
-        }
-      },
+    completed: {
       on: {
-        PLAYBACK_END: {
+        RESET: {
           target: 'connected'
         },
-        STOP: {
-          target: 'connected'
+        SYNTHESIZE: {
+          target: 'synthesizing',
+          guard: 'isValidTextGuard',
+          actions: ['validateTextAction', 'splitTextAction', 'clearAudioBuffersAction']
         }
       }
     },
@@ -591,7 +569,7 @@ export const isIdle = (state: any) => state.matches('idle');
 export const isConnecting = (state: any) => state.matches('connecting');
 export const isConnected = (state: any) => state.matches('connected');
 export const isSynthesizing = (state: any) => state.matches('synthesizing');
-export const isPlaying = (state: any) => state.matches('playing');
+export const isCompleted = (state: any) => state.matches('completed');
 export const isError = (state: any) => state.matches('error');
 
 // プログレス取得ヘルパー
@@ -633,7 +611,7 @@ export const selectors = {
   isConnecting,
   isConnected,
   isSynthesizing,
-  isPlaying,
+  isCompleted,
   isError,
   getProgress: (state: any) => getProgress(state.context),
   getError: (state: any) => getError(state.context),

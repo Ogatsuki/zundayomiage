@@ -22,7 +22,7 @@ import {
   isConnecting,
   isConnected,
   isSynthesizing,
-  isPlaying,
+  isCompleted,
   isError,
   getProgress,
   getError,
@@ -291,31 +291,17 @@ const synthesizeAudio = async (
 };
 
 /**
- * 音声再生処理
+ * 音声ダウンロード処理
  */
-const playAudio = async (audioBlob: Blob): Promise<void> => {
-  const audio = new Audio(URL.createObjectURL(audioBlob));
-
-  return new Promise((resolve, reject) => {
-    audio.addEventListener('ended', () => {
-      URL.revokeObjectURL(audio.src);
-      resolve();
-    });
-
-    audio.addEventListener('error', (e) => {
-      URL.revokeObjectURL(audio.src);
-      const errorMessage = 'Audio playback failed';
-      logVoicevoxError('playAudio', errorMessage, `Audio URL: ${audio.src}`);
-      reject(new Error(errorMessage));
-    });
-
-    audio.play().catch((playError) => {
-      URL.revokeObjectURL(audio.src);
-      const errorMessage = `Audio play failed: ${playError instanceof Error ? playError.message : String(playError)}`;
-      logVoicevoxError('playAudio', errorMessage, `Audio duration: ${audio.duration}`);
-      reject(new Error(errorMessage));
-    });
-  });
+const downloadAudio = (audioBlob: Blob, filename: string = 'voice.wav'): void => {
+  const url = URL.createObjectURL(audioBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 /**
@@ -446,37 +432,7 @@ export function useVoicevoxSynthesis(options: {
             throw error;
           }
         }),
-        playAudioService: fromPromise(async ({ input }: {
-          input: { audioBuffers: ArrayBuffer[] }
-        }) => {
-          try {
-            // 音声バッファを結合してBlobとして再生
-            if (input.audioBuffers.length === 0) {
-              logVoicevoxError('playAudioService', 'No audio buffers provided', 'Empty buffer array');
-              return;
-            }
-
-            let combinedBuffer: ArrayBuffer;
-            if (input.audioBuffers.length === 1) {
-              combinedBuffer = input.audioBuffers[0];
-            } else {
-              const totalLength = input.audioBuffers.reduce((sum: number, buffer: ArrayBuffer) => sum + buffer.byteLength, 0);
-              const combined = new Uint8Array(totalLength);
-              let offset = 0;
-              for (const buffer of input.audioBuffers) {
-                combined.set(new Uint8Array(buffer), offset);
-                offset += buffer.byteLength;
-              }
-              combinedBuffer = combined.buffer;
-            }
-
-            const audioBlob = new Blob([combinedBuffer], { type: 'audio/wav' });
-            await playAudio(audioBlob);
-          } catch (error) {
-            logVoicevoxError('playAudioService', error, `Buffer count: ${input.audioBuffers.length}`);
-            throw error;
-          }
-        })
+// 音声再生サービスは削除されました（ダウンロード専用）
       }
     })
   );
@@ -573,6 +529,13 @@ export function useVoicevoxSynthesis(options: {
     return new Blob([combinedBuffer], { type: 'audio/wav' });
   }, [state]);
 
+  const downloadAudioFunction = useCallback((filename?: string): void => {
+    const finalAudio = getFinalAudio();
+    if (finalAudio) {
+      downloadAudio(finalAudio, filename || 'voice.wav');
+    }
+  }, [getFinalAudio]);
+
   const retryLastSynthesis = useCallback((): void => {
     if (canRetry(state.context)) {
       send({ type: 'RETRY' });
@@ -609,13 +572,14 @@ export function useVoicevoxSynthesis(options: {
     error,
     isIdle: isIdle(state),
     isProcessing: isSynthesizing(state),
-    isCompleted: isPlaying(state),
+    isCompleted: isCompleted(state),
     isFailed: isError(state),
     updateConfig,
     getConfig,
     updateSpeaker,
     getSpeakerId,
     getFinalAudio,
+    downloadAudio: downloadAudioFunction,
     retryLastSynthesis,
     canRetry: canRetrySynthesis,
     reset
@@ -697,21 +661,18 @@ export const VoicevoxSynthesisBlock: React.FC<VoicevoxSynthesisBlockProps> = ({
     }
   }, [synthesis]);
 
+  const handleDownload = useCallback(() => {
+    if (synthesis.isCompleted) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `voice_${timestamp}.wav`;
+      synthesis.downloadAudio(filename);
+    }
+  }, [synthesis]);
+
   const progress = synthesis.getProgress();
 
   return (
     <div className={`voicevox-synthesis-block ${className}`}>
-      {/* 接続状態表示 */}
-      <div className="connection-section mb-4">
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${
-            synthesis.isConnected() ? 'bg-green-500' : 'bg-red-500'
-          }`} />
-          <span className="text-sm">
-            {synthesis.isConnected() ? 'VOICEVOXサーバーに接続済み' : 'VOICEVOXサーバー未接続'}
-          </span>
-        </div>
-      </div>
 
       {/* 進捗表示 */}
       {synthesis.isProcessing && (
@@ -746,7 +707,7 @@ export const VoicevoxSynthesisBlock: React.FC<VoicevoxSynthesisBlockProps> = ({
           <span className="text-sm font-medium">
             {synthesis.isIdle && '準備完了'}
             {synthesis.isProcessing && '処理中'}
-            {synthesis.isCompleted && '再生中'}
+            {synthesis.isCompleted && '完了'}
             {synthesis.isFailed && 'エラー'}
           </span>
         </div>
@@ -771,6 +732,16 @@ export const VoicevoxSynthesisBlock: React.FC<VoicevoxSynthesisBlockProps> = ({
             disabled={disabled}
           >
             再試行
+          </button>
+        )}
+
+        {synthesis.isCompleted && (
+          <button
+            onClick={handleDownload}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            disabled={disabled}
+          >
+            📋 ダウンロード
           </button>
         )}
       </div>

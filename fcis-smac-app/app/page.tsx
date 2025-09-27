@@ -56,10 +56,6 @@ export default function Home() {
   }, []);
 
   // StatusDisplay用の状態マッピング
-  const getConnectionStatus = () => {
-    if (!synthesisMachineRef.current) return 'disconnected';
-    return synthesisMachineRef.current.isConnected() ? 'connected' : 'disconnected';
-  };
 
   const getSynthesisState = () => {
     if (!synthesisMachineRef.current) return 'idle';
@@ -120,7 +116,6 @@ export default function Home() {
             />
 
             <StatusDisplay
-              connectionStatus={getConnectionStatus()}
               synthesisState={getSynthesisState()}
               progress={getProgress()}
               error={getError()}
@@ -177,10 +172,22 @@ export default function Home() {
         </div>
 
         {/* フッター */}
-        <footer className="text-center mt-6 sm:mt-8 md:mt-12 text-xs sm:text-sm text-green-600 px-2 sm:px-0">
-          <p className="text-xs sm:text-sm">理想性スコア: 93% | アーキテクチャ: FCIS+SMAC</p>
-          <p className="mt-1 sm:mt-2 text-xs sm:text-sm">Core層・State層・Shell層による完全な関心事の分離</p>
-          <p className="mt-1 sm:mt-2 text-xs sm:text-sm">ユーザー入力による動的音声合成 | エラーハンドリング・リトライ機能付き</p>
+        <footer className="mt-6 sm:mt-8 md:mt-12 px-2 sm:px-0">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-green-200">
+            <h3 className="font-bold text-green-800 mb-3 text-sm sm:text-base">利用規約・クレジット</h3>
+            <div className="text-xs sm:text-sm text-green-700 space-y-2">
+              <div>
+                <p className="font-medium">VOICEVOX: ずんだもん</p>
+                <p>音声合成：VOICEVOX by Hiroshiba Kazuyuki</p>
+                <p>キャラクター：東北ずん子プロジェクト</p>
+              </div>
+              <div className="border-t border-green-200 pt-2 mt-2">
+                <p className="text-xs text-green-600">
+                  このアプリケーションはVOICEVOXの利用規約に従って開発されています。
+                </p>
+              </div>
+            </div>
+          </div>
         </footer>
       </div>
     </main>
