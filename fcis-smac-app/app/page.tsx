@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { VoicevoxSynthesisBlock, useVoicevoxSynthesis } from '../shell/voicevox.shell.client.vertical';
 import { UIInputComponent } from '../shell/ui-input.shell.client.vertical';
 import { StatusDisplay } from '../shell/status-display.shell.client.vertical';
@@ -10,66 +10,56 @@ export default function Home() {
   // 状態管理
   const [inputText, setInputText] = useState('');
   const [currentSpeakerId, setCurrentSpeakerId] = useState(3);
-  const [synthesisKey, setSynthesisKey] = useState(0); // 強制再レンダー用
 
-  // VoicevoxSynthesisBlockのcontractを取得するためのref
-  const synthesisMachineRef = useRef<VoiceSynthesisContract | null>(null);
+  // VoicevoxSynthesis フックの直接使用
   const synthesis = useVoicevoxSynthesis();
-
-  // contractの設定
-  useEffect(() => {
-    synthesisMachineRef.current = synthesis;
-  }, [synthesis]);
 
   // UIInput用のイベントハンドラー
   const handleSynthesize = useCallback((text: string, speakerId: number) => {
-    if (synthesisMachineRef.current && text.trim()) {
+    if (synthesis && text.trim()) {
       setInputText(text);
       setCurrentSpeakerId(speakerId);
-      // 新しい合成を開始するためにキーを更新
-      setSynthesisKey(prev => prev + 1);
-      synthesisMachineRef.current.synthesizeVoice(text, speakerId).catch((error) => {
+      synthesis.synthesizeVoice(text, speakerId).catch((error) => {
         // エラーはStatusDisplayで表示される
       });
     }
-  }, []);
+  }, [synthesis]);
 
   const handleStop = useCallback(() => {
-    if (synthesisMachineRef.current) {
-      synthesisMachineRef.current.stopSynthesis();
+    if (synthesis) {
+      synthesis.stopSynthesis();
     }
-  }, []);
+  }, [synthesis]);
 
   const handleReset = useCallback(() => {
-    if (synthesisMachineRef.current) {
-      synthesisMachineRef.current.reset();
+    if (synthesis) {
+      synthesis.reset();
     }
     setInputText('');
-    setSynthesisKey(prev => prev + 1);
-  }, []);
+  }, [synthesis]);
 
   // リトライハンドラー
   const handleRetry = useCallback(() => {
-    if (synthesisMachineRef.current && synthesisMachineRef.current.canRetry()) {
-      synthesisMachineRef.current.retryLastSynthesis();
+    if (synthesis && synthesis.canRetry()) {
+      synthesis.retryLastSynthesis();
     }
-  }, []);
+  }, [synthesis]);
 
   // StatusDisplay用の状態マッピング
 
   const getSynthesisState = () => {
-    if (!synthesisMachineRef.current) return 'idle';
+    if (!synthesis) return 'idle';
 
-    if (synthesisMachineRef.current.isFailed) return 'error';
-    if (synthesisMachineRef.current.isCompleted) return 'completed';
-    if (synthesisMachineRef.current.isProcessing) return 'synthesizing';
+    if (synthesis.isFailed) return 'error';
+    if (synthesis.isCompleted) return 'completed';
+    if (synthesis.isProcessing) return 'synthesizing';
     return 'idle';
   };
 
   const getProgress = () => {
-    if (!synthesisMachineRef.current) return null;
+    if (!synthesis) return null;
 
-    const progress = synthesisMachineRef.current.getProgress();
+    const progress = synthesis.getProgress();
     return {
       percentage: progress.percentage,
       processedChunks: progress.processedChunks,
@@ -79,9 +69,9 @@ export default function Home() {
   };
 
   const getError = () => {
-    if (!synthesisMachineRef.current || !synthesisMachineRef.current.error) return null;
+    if (!synthesis || !synthesis.error) return null;
 
-    const error = synthesisMachineRef.current.error;
+    const error = synthesis.error;
     return {
       code: error.code,
       message: error.message,
@@ -110,8 +100,8 @@ export default function Home() {
               onSynthesize={handleSynthesize}
               onStop={handleStop}
               onReset={handleReset}
-              disabled={synthesis.isProcessing}
-              isProcessing={synthesis.isProcessing}
+              disabled={synthesis?.isProcessing ?? false}
+              isProcessing={synthesis?.isProcessing ?? false}
               className="w-full"
             />
 
@@ -134,7 +124,6 @@ export default function Home() {
 
               {inputText ? (
                 <VoicevoxSynthesisBlock
-                  key={synthesisKey}
                   text={inputText}
                   speakerId={currentSpeakerId}
                   onComplete={(audio) => {

@@ -10,7 +10,10 @@
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp@latest"
+        "@playwright/mcp@latest",
+        "--isolated",
+        "--headless",
+        "--disable-dev-shm-usage"
       ]
     },
     "supabase": {

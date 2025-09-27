@@ -9,18 +9,19 @@
  * - バリデーション処理（文字数制限、空文字チェック）
  * - UI状態管理（useState）
  * - イベント処理とコールバック呼び出し
+ * - アクセシビリティ対応（ARIA属性、フォーカス管理）
  * - Tailwind CSSによるスタイリング
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 // ===== コントラクト定義 =====
 export interface UIInputContract {
   onSynthesize: (text: string, speakerId: number) => void;
   onStop: () => void;
   onReset: () => void;
-  disabled?: boolean;
-  isProcessing?: boolean;
+  disabled: boolean;
+  isProcessing: boolean;
 }
 
 // ===== 定数定義 =====
@@ -39,26 +40,51 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
   onSynthesize,
   onStop,
   onReset,
-  disabled = false,
-  isProcessing = false,
+  disabled,
+  isProcessing,
   className = ''
 }) => {
   // 内部状態管理
   const [text, setText] = useState('');
   const [speakerId, setSpeakerId] = useState(3); // デフォルトは「ずんだもん（通常）」
   const [isValid, setIsValid] = useState(false);
+  const [inputError, setInputError] = useState<string | null>(null);
+
+  // フォーカス管理用ref
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // バリデーション処理
   const validateInput = useCallback((inputText: string): boolean => {
-    return inputText.trim().length > 0 && inputText.length <= MAX_CHARS;
+    if (!inputText.trim()) {
+      setInputError('テキストを入力してください');
+      // エラー時にフォーカスをテキストエリアに移動
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+      return false;
+    }
+    if (inputText.length > MAX_CHARS) {
+      setInputError(`テキストは${MAX_CHARS.toLocaleString()}文字以内で入力してください`);
+      // エラー時にフォーカスをテキストエリアに移動
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+      return false;
+    }
+    setInputError(null);
+    return true;
   }, []);
 
   // テキスト変更ハンドラー
   const handleTextChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
     setText(newText);
+    // 新規入力時にエラーをクリア
+    if (inputError && newText.trim().length > 0) {
+      setInputError(null);
+    }
     setIsValid(validateInput(newText));
-  }, [validateInput]);
+  }, [validateInput, inputError]);
 
   // 話者変更ハンドラー
   const handleSpeakerChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -67,10 +93,10 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
 
   // 開始ボタンハンドラー
   const handleStart = useCallback(() => {
-    if (isValid && !disabled) {
+    if (isValid && !disabled && !isProcessing) {
       onSynthesize(text.trim(), speakerId);
     }
-  }, [isValid, disabled, text, speakerId, onSynthesize]);
+  }, [isValid, disabled, isProcessing, text, speakerId, onSynthesize]);
 
   // 停止ボタンハンドラー
   const handleStop = useCallback(() => {
@@ -84,7 +110,12 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
     if (!disabled) {
       setText('');
       setIsValid(false);
+      setInputError(null);
       onReset();
+      // リセット後にテキストエリアにフォーカス
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
     }
   }, [disabled, onReset]);
 
@@ -120,13 +151,14 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
           読み上げテキスト
         </label>
         <textarea
+          ref={textareaRef}
           id="text-input"
           value={text}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
           placeholder="ここに読み上げたいテキストを入力してください..."
           className={`w-full min-h-[100px] sm:min-h-[150px] px-2 sm:px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 transition-colors text-sm sm:text-base ${
-            isOverLimit
+            isOverLimit || inputError
               ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
               : text.trim().length > 0
               ? 'border-green-300 focus:border-green-500 focus:ring-green-200'
@@ -134,6 +166,10 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
           }`}
           disabled={disabled}
           maxLength={MAX_CHARS + 1000} // 制限を少し超えても入力できるようにして、UIでエラー表示
+          aria-label="読み上げテキスト入力"
+          aria-describedby={inputError ? 'text-input-error' : 'text-input-help'}
+          aria-required="true"
+          aria-invalid={!!inputError || isOverLimit}
         />
 
         {/* 文字数表示 */}
@@ -151,14 +187,24 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
         </div>
 
         {/* バリデーションエラー表示 */}
-        {isOverLimit && (
-          <div className="mt-2 text-sm text-red-600">
-            文字数が制限を超えています。{MAX_CHARS}文字以内にしてください。
+        {(isOverLimit || inputError) && (
+          <div id="text-input-error" className="mt-2 text-sm text-red-600" role="alert" aria-live="polite">
+            {isOverLimit
+              ? `文字数が制限を超えています。${MAX_CHARS.toLocaleString()}文字以内にしてください。`
+              : inputError
+            }
           </div>
         )}
-        {text.trim().length === 0 && text.length > 0 && (
-          <div className="mt-2 text-sm text-yellow-600">
+        {text.trim().length === 0 && text.length > 0 && !inputError && (
+          <div className="mt-2 text-sm text-yellow-600" role="alert" aria-live="polite">
             空白のみのテキストは読み上げできません。
+          </div>
+        )}
+
+        {/* ヘルプテキスト */}
+        {!inputError && !isOverLimit && (
+          <div id="text-input-help" className="sr-only">
+            読み上げたいテキストを入力してください。最大{MAX_CHARS.toLocaleString()}文字まで入力できます。
           </div>
         )}
       </div>
@@ -174,6 +220,8 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
           onChange={handleSpeakerChange}
           className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-colors bg-white text-sm sm:text-base"
           disabled={disabled}
+          aria-label="話者選択"
+          aria-describedby="speaker-help"
         >
           {SPEAKER_OPTIONS.map((speaker) => (
             <option key={speaker.id} value={speaker.id}>
@@ -181,6 +229,9 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
             </option>
           ))}
         </select>
+        <div id="speaker-help" className="sr-only">
+          音声合成に使用する話者を選択してください。
+        </div>
       </div>
 
       {/* 制御ボタン */}
@@ -195,6 +246,9 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
               : 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800 shadow-md hover:shadow-lg'
           }`}
           title={!isValid ? '有効なテキストを入力してください' : 'Ctrl+Enterでも開始できます'}
+          aria-label="音声合成を開始"
+          aria-busy={isProcessing}
+          aria-describedby="start-button-help"
         >
           {isProcessing ? (
             <span className="flex items-center justify-center">
@@ -215,6 +269,8 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-md hover:shadow-lg'
           }`}
+          aria-label="音声合成を停止"
+          aria-describedby="stop-button-help"
         >
           停止
         </button>
@@ -228,6 +284,8 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700 shadow-md hover:shadow-lg'
           }`}
+          aria-label="入力内容をリセット"
+          aria-describedby="reset-button-help"
         >
           リセット
         </button>
@@ -236,6 +294,15 @@ export const UIInputComponent: React.FC<UIInputComponentProps> = ({
       {/* ヘルプテキスト */}
       <div className="mt-3 sm:mt-4 text-xs text-gray-600">
         <p>💡 ヒント: Ctrl+Enter で素早く読み上げを開始できます</p>
+        <div id="start-button-help" className="sr-only">
+          テキストと話者を選択後、このボタンで音声合成を開始します。
+        </div>
+        <div id="stop-button-help" className="sr-only">
+          進行中の音声合成を停止します。
+        </div>
+        <div id="reset-button-help" className="sr-only">
+          入力されたテキストをクリアし、初期状態に戻します。
+        </div>
       </div>
     </div>
   );

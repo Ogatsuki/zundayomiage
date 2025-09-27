@@ -7,10 +7,15 @@ RUN apt-get update && apt-get install -y curl git \
     && npm install -g @google/gemini-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Playwright Chromiumのインストール（最軽量ブラウザ）
-RUN npx playwright install chromium \
-    && npx playwright install-deps chromium
+# Playwright用Google Chromeのインストール（MCP要件）
+# Chromiumではなく、Playwright MCPが要求するChromeを明示的にインストール
+RUN npx playwright install chrome \
+    && npx playwright install-deps chrome
 
 WORKDIR /app
+
+RUN useradd -m claudeuser
+RUN chown -R claudeuser:claudeuser /app
+USER claudeuser
 
 CMD ["/bin/bash"]
