@@ -1,4 +1,4 @@
-export const RUNTIME: 'client' | 'server' | 'universal' = 'server';
+export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 
