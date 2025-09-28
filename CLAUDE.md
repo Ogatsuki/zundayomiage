@@ -92,5 +92,3 @@ action: './docs/state'にjsonファイルで状態を保存
 - 対象情報はユーザーから提供される
 
 ## claude code実行環境
-linux/amd64
-dockerコマンド使用不可

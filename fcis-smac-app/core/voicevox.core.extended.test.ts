@@ -3,7 +3,7 @@
  * 30,000文字対応とOCRテキスト処理のテスト
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
   validateExtendedText,
   splitIntoExtendedChunks,

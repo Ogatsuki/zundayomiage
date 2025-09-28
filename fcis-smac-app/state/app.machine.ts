@@ -18,6 +18,9 @@ export const appMachine = createMachine({
     ttsText: '',
     speakerId: 3, // ずんだもん（あまあま）
     audioUrl: '',
+    audioFileName: '',
+    audioFormat: undefined,
+    synthesisProgress: undefined,
     error: null
   },
 
@@ -36,7 +39,7 @@ export const appMachine = createMachine({
           })
         },
         START_TTS: {
-          target: 'tts_synthesizing',
+          target: 'tts_preparing',
           actions: assign((_, event: any) => ({
             ttsText: event?.text || '',
             speakerId: event?.speakerId || 3,
@@ -89,7 +92,7 @@ export const appMachine = createMachine({
     ocr_complete: {
       on: {
         START_TTS: {
-          target: 'tts_synthesizing',
+          target: 'tts_preparing',
           actions: assign((context, event: any) => ({
             ttsText: event?.text || '',
             speakerId: event?.speakerId ?? 3,
@@ -106,13 +109,97 @@ export const appMachine = createMachine({
       }
     },
 
-    // TTS音声合成中
+    // TTS音声合成準備中
+    tts_preparing: {
+      on: {
+        CHUNK_START: {
+          target: 'tts_synthesizing'
+        },
+        ERROR: {
+          target: 'error',
+          actions: assign({
+            error: (_, event: any) => ({
+              message: event?.message || 'Unknown error',
+              recoverable: event?.recoverable ?? false
+            })
+          })
+        }
+      }
+    },
+
+    // TTS音声合成中（チャンク処理）
     tts_synthesizing: {
       on: {
-        TTS_SUCCESS: {
-          target: 'tts_playing',
+        CHUNK_PROGRESS: {
           actions: assign({
-            audioUrl: (_, event: any) => event?.audioUrl || ''
+            synthesisProgress: (_, event: any) => ({
+              current: event?.current || 0,
+              total: event?.total || 0,
+              phase: 'chunking' as const
+            })
+          })
+        },
+        MERGE_START: {
+          target: 'tts_merging'
+        },
+        ERROR: {
+          target: 'error',
+          actions: assign({
+            error: (_, event: any) => ({
+              message: event?.message || 'Unknown error',
+              recoverable: event?.recoverable ?? false
+            })
+          })
+        }
+      }
+    },
+
+    // TTS音声マージ中
+    tts_merging: {
+      on: {
+        MERGE_PROGRESS: {
+          actions: assign({
+            synthesisProgress: (_, event: any) => ({
+              current: event?.current || 0,
+              total: event?.total || 0,
+              phase: 'merging' as const
+            })
+          })
+        },
+        CONVERT_START: {
+          target: 'tts_converting'
+        },
+        ERROR: {
+          target: 'error',
+          actions: assign({
+            error: (_, event: any) => ({
+              message: event?.message || 'Unknown error',
+              recoverable: event?.recoverable ?? false
+            })
+          })
+        }
+      }
+    },
+
+    // TTS音声変換中（MP3変換）
+    tts_converting: {
+      on: {
+        CONVERT_PROGRESS: {
+          actions: assign({
+            synthesisProgress: (_, event: any) => ({
+              current: event?.current || 0,
+              total: event?.total || 0,
+              phase: 'converting' as const
+            })
+          })
+        },
+        TTS_SUCCESS: {
+          target: 'tts_ready',
+          actions: assign({
+            audioUrl: (_, event: any) => event?.audioUrl || '',
+            audioFileName: (_, event: any) => event?.fileName || '',
+            audioFormat: (_, event: any) => event?.format || 'mp3',
+            synthesisProgress: undefined
           })
         },
         ERROR: {
@@ -127,18 +214,21 @@ export const appMachine = createMachine({
       }
     },
 
-    // TTS音声再生中
-    tts_playing: {
+    // TTS音声ダウンロード可能
+    tts_ready: {
       on: {
-        PLAY_COMPLETE: {
-          target: 'idle'
+        DOWNLOAD: {
+          actions: 'triggerDownload'
         },
         START_TTS: {
-          target: 'tts_synthesizing',
+          target: 'tts_preparing',
           actions: assign((_, event: any) => ({
             ttsText: event?.text || '',
             speakerId: event?.speakerId || 3,
             audioUrl: '',
+            audioFileName: '',
+            audioFormat: undefined,
+            synthesisProgress: undefined,
             error: null
           }))
         }
@@ -172,8 +262,11 @@ export type AppStateValue =
   | 'ocr_uploading'
   | 'ocr_processing'
   | 'ocr_complete'
+  | 'tts_preparing'
   | 'tts_synthesizing'
-  | 'tts_playing'
+  | 'tts_merging'
+  | 'tts_converting'
+  | 'tts_ready'
   | 'error';
 
 /**

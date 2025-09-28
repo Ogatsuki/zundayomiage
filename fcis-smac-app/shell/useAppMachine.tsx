@@ -49,6 +49,7 @@ export function useAppMachine() {
     }
 
     send({ type: 'START_TTS', text, speakerId });
+    send({ type: 'CHUNK_START' });
 
     try {
       const response = await fetch('/api/synthesize', {
@@ -59,12 +60,22 @@ export function useAppMachine() {
 
       const data = await response.json();
       if (response.ok && data.audio) {
+        // MP3形式でBlob生成（MIMEタイプ変更）
         const audioBlob = new Blob(
           [Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))],
-          { type: 'audio/wav' }
+          { type: 'audio/mpeg' }  // WAVからMP3に変更
         );
         const audioUrl = URL.createObjectURL(audioBlob);
-        send({ type: 'TTS_SUCCESS', audioUrl });
+
+        // ファイル名の生成（デフォルト値）
+        const fileName = data.fileName || `${speakerId === 3 ? 'zundamon' : 'metan'}_${Date.now()}.mp3`;
+
+        send({
+          type: 'TTS_SUCCESS',
+          audioUrl,
+          fileName,
+          format: 'mp3'
+        });
       } else {
         // エラーコードに基づいて具体的なメッセージを表示
         let errorMessage = 'TTS処理に失敗しました';

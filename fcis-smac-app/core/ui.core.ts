@@ -21,10 +21,38 @@ export function buildAppState(
       return { type: 'ocr_processing' };
     case 'ocr_complete':
       return { type: 'ocr_complete', text: context.ocrText };
+    case 'tts_preparing':
+      return { type: 'tts_preparing', text: context.ttsText, speakerId: context.speakerId };
     case 'tts_synthesizing':
-      return { type: 'tts_synthesizing', text: context.ttsText, speakerId: context.speakerId };
-    case 'tts_playing':
-      return { type: 'tts_playing', audioUrl: context.audioUrl };
+      return {
+        type: 'tts_synthesizing',
+        text: context.ttsText,
+        speakerId: context.speakerId,
+        progress: context.synthesisProgress && context.synthesisProgress.phase === 'chunking'
+          ? { current: context.synthesisProgress.current, total: context.synthesisProgress.total }
+          : undefined
+      };
+    case 'tts_merging':
+      return {
+        type: 'tts_merging',
+        progress: context.synthesisProgress && context.synthesisProgress.phase === 'merging'
+          ? { current: context.synthesisProgress.current, total: context.synthesisProgress.total }
+          : undefined
+      };
+    case 'tts_converting':
+      return {
+        type: 'tts_converting',
+        progress: context.synthesisProgress && context.synthesisProgress.phase === 'converting'
+          ? { current: context.synthesisProgress.current, total: context.synthesisProgress.total }
+          : undefined
+      };
+    case 'tts_ready':
+      return {
+        type: 'tts_ready',
+        audioUrl: context.audioUrl,
+        fileName: context.audioFileName,
+        format: 'mp3'
+      };
     case 'error':
       return {
         type: 'error',
@@ -50,6 +78,7 @@ export function deriveUIState(appState: AppState): UIState {
         isProcessing: false,
         canSubmitOCR: true,
         canSubmitTTS: true,
+        showDownloadButton: false,
         progressMessage: undefined,
         errorMessage: undefined
       };
@@ -61,6 +90,7 @@ export function deriveUIState(appState: AppState): UIState {
         isProcessing: true,
         canSubmitOCR: false,
         canSubmitTTS: false,
+        showDownloadButton: false,
         progressMessage: 'ファイルをアップロード中...',
         errorMessage: undefined
       };
@@ -72,6 +102,7 @@ export function deriveUIState(appState: AppState): UIState {
         isProcessing: true,
         canSubmitOCR: false,
         canSubmitTTS: false,
+        showDownloadButton: false,
         progressMessage: 'テキストを抽出中...',
         errorMessage: undefined
       };
@@ -83,29 +114,83 @@ export function deriveUIState(appState: AppState): UIState {
         isProcessing: false,
         canSubmitOCR: true,
         canSubmitTTS: true,
+        showDownloadButton: false,
         progressMessage: 'OCR処理が完了しました',
         errorMessage: undefined
       };
 
-    case 'tts_synthesizing':
+    case 'tts_preparing':
       return {
         showOCRSection: false,
         showTTSSection: true,
         isProcessing: true,
         canSubmitOCR: false,
         canSubmitTTS: false,
-        progressMessage: '音声を生成中...',
+        showDownloadButton: false,
+        progressMessage: '音声生成を準備中...',
+        progressPercentage: 0,
         errorMessage: undefined
       };
 
-    case 'tts_playing':
+    case 'tts_synthesizing':
+      const synthesizingProgress = appState.type === 'tts_synthesizing' && appState.progress
+        ? Math.floor((appState.progress.current / appState.progress.total) * 33)
+        : 10;
+      return {
+        showOCRSection: false,
+        showTTSSection: true,
+        isProcessing: true,
+        canSubmitOCR: false,
+        canSubmitTTS: false,
+        showDownloadButton: false,
+        progressMessage: 'テキストをチャンクに分割して音声生成中...',
+        progressPercentage: synthesizingProgress,
+        errorMessage: undefined
+      };
+
+    case 'tts_merging':
+      const mergingProgress = appState.type === 'tts_merging' && appState.progress
+        ? 33 + Math.floor((appState.progress.current / appState.progress.total) * 33)
+        : 50;
+      return {
+        showOCRSection: false,
+        showTTSSection: true,
+        isProcessing: true,
+        canSubmitOCR: false,
+        canSubmitTTS: false,
+        showDownloadButton: false,
+        progressMessage: '音声ファイルをマージ中...',
+        progressPercentage: mergingProgress,
+        errorMessage: undefined
+      };
+
+    case 'tts_converting':
+      const convertingProgress = appState.type === 'tts_converting' && appState.progress
+        ? 66 + Math.floor((appState.progress.current / appState.progress.total) * 34)
+        : 80;
+      return {
+        showOCRSection: false,
+        showTTSSection: true,
+        isProcessing: true,
+        canSubmitOCR: false,
+        canSubmitTTS: false,
+        showDownloadButton: false,
+        progressMessage: 'MP3形式に変換中...',
+        progressPercentage: convertingProgress,
+        errorMessage: undefined
+      };
+
+    case 'tts_ready':
       return {
         showOCRSection: false,
         showTTSSection: true,
         isProcessing: false,
         canSubmitOCR: false,
         canSubmitTTS: true,
-        progressMessage: '音声再生中',
+        showDownloadButton: true,
+        downloadFileName: appState.type === 'tts_ready' ? appState.fileName : undefined,
+        progressMessage: undefined,
+        progressPercentage: undefined,
         errorMessage: undefined
       };
 
@@ -116,6 +201,7 @@ export function deriveUIState(appState: AppState): UIState {
         isProcessing: false,
         canSubmitOCR: appState.recoverable,
         canSubmitTTS: appState.recoverable,
+        showDownloadButton: false,
         progressMessage: undefined,
         errorMessage: appState.message
       };
@@ -153,14 +239,23 @@ export function generateUIMessage(
       }
       return 'OCR処理が完了しました';
 
+    case 'tts_preparing':
+      return '音声生成を準備しています...';
+
     case 'tts_synthesizing':
       if (context?.duration) {
         return `音声を生成中... (推定時間: ${context.duration}秒)`;
       }
-      return '音声を生成しています...';
+      return 'テキストをチャンクに分割して音声生成中...';
 
-    case 'tts_playing':
-      return '音声を再生中です';
+    case 'tts_merging':
+      return '音声ファイルをマージ中...';
+
+    case 'tts_converting':
+      return 'MP3形式に変換中...';
+
+    case 'tts_ready':
+      return '音声ファイルのダウンロード準備完了';
 
     case 'error':
       return state.message;
@@ -193,10 +288,13 @@ export function getButtonLabel(
     }
   } else {
     switch (state.type) {
+      case 'tts_preparing':
       case 'tts_synthesizing':
+      case 'tts_merging':
+      case 'tts_converting':
         return '生成中...';
-      case 'tts_playing':
-        return '再生中...';
+      case 'tts_ready':
+        return '新しい音声を生成';
       default:
         return '音声を生成';
     }
@@ -230,13 +328,28 @@ export function calculateProgress(
     case 'ocr_complete':
       return 75;
 
+    case 'tts_preparing':
+      return 10;
+
     case 'tts_synthesizing':
       if (progress) {
-        return 75 + Math.floor((progress.current / progress.total) * 20);
+        return 10 + Math.floor((progress.current / progress.total) * 30);
+      }
+      return 25;
+
+    case 'tts_merging':
+      if (progress) {
+        return 40 + Math.floor((progress.current / progress.total) * 30);
+      }
+      return 55;
+
+    case 'tts_converting':
+      if (progress) {
+        return 70 + Math.floor((progress.current / progress.total) * 25);
       }
       return 85;
 
-    case 'tts_playing':
+    case 'tts_ready':
       return 100;
 
     default:
@@ -262,8 +375,8 @@ export function deriveUIVisibility(state: AppState): {
     fileInput: state.type === 'idle' || state.type === 'ocr_complete',
     textInput: state.type === 'idle' || state.type === 'ocr_complete',
     ocrResult: state.type === 'ocr_complete',
-    audioPlayer: state.type === 'tts_playing',
+    audioPlayer: false, // audioタグは削除
     errorAlert: state.type === 'error',
-    progressBar: ['ocr_uploading', 'ocr_processing', 'tts_synthesizing'].includes(state.type)
+    progressBar: ['ocr_uploading', 'ocr_processing', 'tts_preparing', 'tts_synthesizing', 'tts_merging', 'tts_converting'].includes(state.type)
   };
 }

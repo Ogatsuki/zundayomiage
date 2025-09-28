@@ -5,7 +5,11 @@ interface TTSSectionProps {
   isProcessing: boolean;
   canSubmit: boolean;
   audioUrl?: string;
+  audioFileName?: string;
   extractedText?: string;
+  progressMessage?: string;
+  progressPercentage?: number;
+  onDownload?: () => void;
 }
 
 export function TTSSection({
@@ -13,7 +17,11 @@ export function TTSSection({
   isProcessing,
   canSubmit,
   audioUrl,
-  extractedText
+  audioFileName,
+  extractedText,
+  progressMessage,
+  progressPercentage,
+  onDownload
 }: TTSSectionProps) {
   const [text, setText] = useState('');
   const [speakerId, setSpeakerId] = useState(3);
@@ -26,6 +34,20 @@ export function TTSSection({
 
   const handleSubmit = () => {
     onSynthesize(text, speakerId);
+  };
+
+  const handleDownload = () => {
+    if (audioUrl && onDownload) {
+      onDownload();
+    } else if (audioUrl) {
+      // フォールバック: 直接ダウンロード
+      const a = document.createElement('a');
+      a.href = audioUrl;
+      a.download = audioFileName || `zundamon_${Date.now()}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   return (
@@ -91,16 +113,50 @@ export function TTSSection({
           {isProcessing ? '生成中...' : '音声を生成'}
         </button>
 
+        {/* プログレス表示 */}
+        {progressMessage && (
+          <div className="mt-4 p-3 bg-blue-50 rounded">
+            <div className="text-sm text-blue-700">{progressMessage}</div>
+            {progressPercentage !== undefined && (
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ダウンロードボタン（audioタグの代わり） */}
         {audioUrl && (
-          <div className="p-4 bg-gray-100 rounded">
-            <audio controls src={audioUrl} className="w-full mb-2" aria-label="生成された音声" />
-            <a
-              href={audioUrl}
-              download={`${speakerId === 3 ? 'zundamon' : 'metan'}_${Date.now()}.wav`}
-              className="text-blue-600 hover:underline"
-            >
-              音声をダウンロード
-            </a>
+          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-start gap-3">
+              {/* アイコン */}
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-grow">
+                <p className="text-sm font-medium text-green-800 mb-2">音声生成が完了しました</p>
+                <button
+                  onClick={handleDownload}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                >
+                  {/* ダウンロードアイコン */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                  </svg>
+                  MP3をダウンロード
+                </button>
+                {audioFileName && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    ファイル名: {audioFileName}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

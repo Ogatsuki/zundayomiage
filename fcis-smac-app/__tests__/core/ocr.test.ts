@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 import { validateOCRFile, normalizeOCRText } from '../../core/ocr.core';
 
 describe('OCR Core Functions', () => {

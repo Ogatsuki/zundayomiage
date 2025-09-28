@@ -13,6 +13,11 @@ COPY . .
 # Build the application
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Set build-time environment variables for Docker environment
+ARG VOICEVOX_API_URL=http://voicevox:50021
+ARG NEXT_PUBLIC_VOICEVOX_API_URL=http://localhost:50021
+ENV VOICEVOX_API_URL=$VOICEVOX_API_URL
+ENV NEXT_PUBLIC_VOICEVOX_API_URL=$NEXT_PUBLIC_VOICEVOX_API_URL
 RUN npm run build
 
 # Runtime stage

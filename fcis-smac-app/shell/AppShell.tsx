@@ -58,10 +58,17 @@ export function AppShell() {
         {uiState.showTTSSection && (
           <TTSSection
             onSynthesize={handleTTSSynthesize}
-            isProcessing={uiState.isProcessing && state.matches('tts_synthesizing')}
+            isProcessing={uiState.isProcessing}
             canSubmit={uiState.canSubmitTTS}
             audioUrl={state.context?.audioUrl}
+            audioFileName={state.context?.audioFileName}
             extractedText={state.context?.ocrText}
+            progressMessage={uiState.progressMessage}
+            progressPercentage={uiState.progressPercentage}
+            onDownload={() => {
+              // ダウンロードイベントを送信（必要に応じて）
+              // send({ type: 'DOWNLOAD' });
+            }}
           />
         )}
       </div>
