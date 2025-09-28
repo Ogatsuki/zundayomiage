@@ -48,16 +48,17 @@ action: '.modes/parallel-plan-template.md'に従い、調査統合型の並列�
    - 既存コードの依存関係把握
 
 2. **全体設計フェーズ**
-   - アーキテクチャレベルの設計決定
+   - アーキテクチャレベルの設計決定（粒度：粗い～中）
    - 層間のインターフェース・契約定義
    - 共通型定義とタスク間依存関係の明確化
 
 3. **タスク分割と指示書生成**
    - 垂直分割優先（機能単位で独立タスク化）
    - 各セッション用の独立指示書を生成：
-     - `./parallel-sessions/session-a.md`
-     - `./parallel-sessions/session-b.md`
-     - `./parallel-sessions/session-c.md`
+     - `./parallel-sessions/session-a{task-name}.md`
+     - `./parallel-sessions/session-b{task-name}.md`
+     - `./parallel-sessions/session-c{task-name}.md`
+     ...
 
 4. **出力形式**
    - 各Claude Codeセッション用の完結した指示文
@@ -65,9 +66,12 @@ action: '.modes/parallel-plan-template.md'に従い、調査統合型の並列�
 
 **並列セッション（A,B,C,...）での実行**:
 - 各セッションは受け取った指示書に基づき自律的に：
-  1. 詳細実装計画（契約内での最適解探索）
+  1. 詳細実装計画
+  - 契約内での最適解探索
+  - 粒度：細かい）
   2. FCIS+SMAC準拠の実装
-  3. 検証（validatorの品質確認を行う）
+  - 問題を発見し指示範囲を逸脱しなければ修正できない場合は、作業を中止し現状を報告。
+  3. 検証（validatorの品質確認）
 
 ### PM mode（非推奨）
 trigger: "PM mode"
@@ -87,5 +91,6 @@ action: './docs/state'にjsonファイルで状態を保存
   - ユーザーと議論を重ねて発見したノウハウ（"初回セットアップ情報"以外）
 - 対象情報はユーザーから提供される
 
-## 使用可能ツール
-plarywright mcp, sequential-thinking mcp, github CLI
+## claude code実行環境
+linux/amd64
+dockerコマンド使用不可

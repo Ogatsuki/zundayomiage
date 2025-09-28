@@ -14,13 +14,14 @@ services:
     restart: unless-stopped
     networks:
       - fcis-network
+    init: true
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3002:3000"
+      - "300:3000"
     environment:
       - NODE_ENV=development
       - VOICEVOX_API_URL=http://voicevox:50021
@@ -38,6 +39,7 @@ services:
       - ./shell:/app/shell
       - ./contracts:/app/contracts
       - ./app:/app/app
+    init: true
 
 networks:
   fcis-network:
