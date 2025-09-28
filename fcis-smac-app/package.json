@@ -4,16 +4,11 @@
   "private": true,
   "description": "PVBP (Pragmatic Vertical Blocks Protocol) compliant Zundayomiage application",
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "type-check": "tsc --noEmit",
-    "pvbp-check": "node scripts/pvbp-validation.js",
-    "quality-check": "npm run type-check && npm run pvbp-check"
+    "docker:up": "docker-compose up -d --build",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
   "dependencies": {
     "@types/fluent-ffmpeg": "^2.1.27",

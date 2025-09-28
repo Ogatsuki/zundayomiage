@@ -218,7 +218,9 @@
       "mcp__playwright__browser_install",
       "Bash(dir:*)",
       "Bash(NODE_ENV=test npx tsx core/voicevox.core.timeout.test.ts)",
-      "Bash(NEXT_PUBLIC_MOCK_MODE=true npm run dev)"
+      "Bash(NEXT_PUBLIC_MOCK_MODE=true npm run dev)",
+      "Bash(where docker)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   },

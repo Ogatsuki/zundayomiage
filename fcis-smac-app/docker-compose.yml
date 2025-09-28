@@ -1,6 +1,8 @@
 services:
+  # VoiceVox Engine
   voicevox:
     image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    container_name: zundayomiage-voicevox
     ports:
       - "50021:50021"
     environment:
@@ -13,34 +15,29 @@ services:
       start_period: 90s
     restart: unless-stopped
     networks:
-      - fcis-network
-    init: true
+      - app-network
 
+  # Next.js Application (Production Only)
   app:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: zundayomiage-app
     ports:
-      - "300:3000"
+      - "3000:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
+      - PORT=3000
       - VOICEVOX_API_URL=http://voicevox:50021
-      - NEXT_PUBLIC_VOICEVOX_API_URL=http://localhost:50021
+      - NEXT_PUBLIC_VOICEVOX_API_URL=http://voicevox:50021
       - NEXT_TELEMETRY_DISABLED=1
     depends_on:
       voicevox:
         condition: service_healthy
     networks:
-      - fcis-network
+      - app-network
     restart: unless-stopped
-    volumes:
-      - ./core:/app/core
-      - ./state:/app/state
-      - ./shell:/app/shell
-      - ./contracts:/app/contracts
-      - ./app:/app/app
-    init: true
 
 networks:
-  fcis-network:
+  app-network:
     driver: bridge
