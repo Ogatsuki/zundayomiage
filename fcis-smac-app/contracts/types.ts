@@ -53,6 +53,15 @@ export interface UIState {
   progressPercentage?: number;
 }
 
+// 履歴アイテム型
+export interface HistoryItem {
+  id: string;
+  text: string;
+  speakerId: number;
+  timestamp: number;
+  displayText: string;
+}
+
 // State Machine Context
 export interface AppMachineContext {
   ocrText: string;
@@ -67,6 +76,8 @@ export interface AppMachineContext {
     phase: 'chunking' | 'merging' | 'converting';
   };
   error: { message: string; recoverable: boolean } | null;
+  history: HistoryItem[];
+  historyMaxItems: number;
 }
 
 // State Machine Events
@@ -84,4 +95,8 @@ export type AppMachineEvent =
   | { type: 'TTS_SUCCESS'; audioUrl: string; fileName: string; format: 'mp3' }
   | { type: 'DOWNLOAD' }
   | { type: 'ERROR'; message: string; recoverable: boolean }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'SELECT_FROM_HISTORY'; historyItem: HistoryItem }
+  | { type: 'REMOVE_FROM_HISTORY'; itemId: string }
+  | { type: 'CLEAR_HISTORY' }
+  | { type: 'LOAD_HISTORY'; history: HistoryItem[] };

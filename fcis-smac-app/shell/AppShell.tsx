@@ -1,18 +1,49 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useAppMachine } from './useAppMachine';
 import { OCRSection } from './OCRSection';
 import { TTSSection } from './TTSSection';
 import { VoicevoxStatus } from './VoicevoxStatus';
+import { HistorySection } from './HistorySection';
+import { useHistoryPersistence } from './useHistoryPersistence';
 import * as uiCore from '../core/ui.core';
+import { HistoryItem } from '../contracts/types';
 
 export function AppShell() {
-  const { state, handleOCRUpload, handleTTSSynthesize, resetError } = useAppMachine();
+  const { state, send, handleOCRUpload, handleTTSSynthesize, resetError } = useAppMachine();
 
   // buildAppState関数を使用してXStateのstateをAppStateに変換
   const appState = uiCore.buildAppState(state.value, state.context);
   const uiState = uiCore.deriveUIState(appState);
+
+  // 履歴の永続化
+  const handleLoadHistory = useCallback((history: HistoryItem[]) => {
+    send({ type: 'LOAD_HISTORY', history });
+  }, [send]);
+
+  useHistoryPersistence({
+    history: state.context.history,
+    onLoad: handleLoadHistory
+  });
+
+  // 履歴操作ハンドラー
+  const handleHistorySelect = useCallback((item: HistoryItem) => {
+    send({ type: 'SELECT_FROM_HISTORY', historyItem: item });
+    // TTSセクションにスクロール
+    const ttsSection = document.querySelector('[data-section="tts"]');
+    if (ttsSection) {
+      ttsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [send]);
+
+  const handleHistoryRemove = useCallback((itemId: string) => {
+    send({ type: 'REMOVE_FROM_HISTORY', itemId });
+  }, [send]);
+
+  const handleHistoryClear = useCallback(() => {
+    send({ type: 'CLEAR_HISTORY' });
+  }, [send]);
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
@@ -56,21 +87,30 @@ export function AppShell() {
         )}
 
         {uiState.showTTSSection && (
-          <TTSSection
-            onSynthesize={handleTTSSynthesize}
-            isProcessing={uiState.isProcessing}
-            canSubmit={uiState.canSubmitTTS}
-            audioUrl={state.context?.audioUrl}
-            audioFileName={state.context?.audioFileName}
-            extractedText={state.context?.ocrText}
-            progressMessage={uiState.progressMessage}
-            progressPercentage={uiState.progressPercentage}
-            onDownload={() => {
-              // ダウンロードイベントを送信（必要に応じて）
-              // send({ type: 'DOWNLOAD' });
-            }}
-          />
+          <div data-section="tts">
+            <TTSSection
+              onSynthesize={handleTTSSynthesize}
+              isProcessing={uiState.isProcessing}
+              canSubmit={uiState.canSubmitTTS}
+              audioUrl={state.context?.audioUrl}
+              audioFileName={state.context?.audioFileName}
+              extractedText={state.context?.ocrText}
+              progressMessage={uiState.progressMessage}
+              progressPercentage={uiState.progressPercentage}
+              onDownload={() => {
+                // ダウンロードイベントを送信（必要に応じて）
+                // send({ type: 'DOWNLOAD' });
+              }}
+            />
+          </div>
         )}
+
+        <HistorySection
+          history={state.context.history}
+          onSelect={handleHistorySelect}
+          onRemove={handleHistoryRemove}
+          onClear={handleHistoryClear}
+        />
       </div>
     </main>
   );

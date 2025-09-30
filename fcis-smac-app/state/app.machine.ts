@@ -1,5 +1,6 @@
 import { createMachine, assign } from 'xstate';
 import { AppMachineContext, AppMachineEvent } from '../contracts/types';
+import * as historyCore from '../core/history.core';
 
 /**
  * FCIS+SMACアーキテクチャに準拠した状態機械
@@ -21,7 +22,9 @@ export const appMachine = createMachine({
     audioFileName: '',
     audioFormat: undefined,
     synthesisProgress: undefined,
-    error: null
+    error: null,
+    history: [],
+    historyMaxItems: 10
   },
 
   states: {
@@ -216,6 +219,14 @@ export const appMachine = createMachine({
 
     // TTS音声ダウンロード可能
     tts_ready: {
+      entry: assign({
+        // 履歴に追加
+        history: ({ context }) => historyCore.addToHistory(
+          context.history,
+          { text: context.ttsText, speakerId: context.speakerId },
+          context.historyMaxItems
+        )
+      }),
       on: {
         DOWNLOAD: {
           actions: 'triggerDownload'
@@ -245,6 +256,32 @@ export const appMachine = createMachine({
           })
         }
       }
+    }
+  },
+
+  // グローバルイベント（どの状態からでも受け付ける）
+  on: {
+    SELECT_FROM_HISTORY: {
+      actions: assign({
+        ttsText: ({ event }: any) => event?.historyItem?.text || '',
+        speakerId: ({ event }: any) => event?.historyItem?.speakerId || 3
+      })
+    },
+    REMOVE_FROM_HISTORY: {
+      actions: assign({
+        history: ({ context, event }: any) =>
+          historyCore.removeFromHistory(context.history, event?.itemId || '')
+      })
+    },
+    CLEAR_HISTORY: {
+      actions: assign({
+        history: ({ context }) => historyCore.clearHistory(context.history)
+      })
+    },
+    LOAD_HISTORY: {
+      actions: assign({
+        history: ({ event }: any) => event?.history || []
+      })
     }
   }
 });
