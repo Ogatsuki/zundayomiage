@@ -44,31 +44,53 @@ function splitIntoChunks(text: string, size: number = CHUNK_SIZE): string[] {
 /** VOICEVOX audio_query API呼び出し */
 async function getAudioQuery(text: string, speaker: number): Promise<any> {
   const params = new URLSearchParams({ text, speaker: speaker.toString() });
-  const response = await fetch(`${VOICEVOX_API_URL}/audio_query?${params}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(CHUNK_TIMEOUT),
-  });
+  const url = `${VOICEVOX_API_URL}/audio_query?${params}`;
+  console.log(`[VOICEVOX] audio_query request: ${url}`);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(CHUNK_TIMEOUT),
+    });
 
-  if (!response.ok) {
-    throw new Error(`audio_query failed: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'unable to read response');
+      console.error(`[VOICEVOX] audio_query failed: status=${response.status}, body=${errorText}`);
+      throw new Error(`audio_query failed: ${response.status}`);
+    }
+    console.log(`[VOICEVOX] audio_query success`);
+    return response.json();
+  } catch (err) {
+    console.error(`[VOICEVOX] audio_query error:`, err);
+    throw err;
   }
-  return response.json();
 }
 
 /** VOICEVOX synthesis API呼び出し */
 async function synthesize(query: any, speaker: number): Promise<ArrayBuffer> {
-  const response = await fetch(`${VOICEVOX_API_URL}/synthesis?speaker=${speaker}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(query),
-    signal: AbortSignal.timeout(CHUNK_TIMEOUT * 2),
-  });
+  const url = `${VOICEVOX_API_URL}/synthesis?speaker=${speaker}`;
+  console.log(`[VOICEVOX] synthesis request: ${url}`);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(CHUNK_TIMEOUT * 2),
+    });
 
-  if (!response.ok) {
-    throw new Error(`synthesis failed: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'unable to read response');
+      console.error(`[VOICEVOX] synthesis failed: status=${response.status}, body=${errorText}`);
+      throw new Error(`synthesis failed: ${response.status}`);
+    }
+    console.log(`[VOICEVOX] synthesis success`);
+    return response.arrayBuffer();
+  } catch (err) {
+    console.error(`[VOICEVOX] synthesis error:`, err);
+    throw err;
   }
-  return response.arrayBuffer();
 }
 
 /** WAVファイルをマージ（シンプル実装） */
@@ -143,9 +165,12 @@ async function convertWavToMp3(wavBuffer: ArrayBuffer): Promise<Buffer> {
 // ------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
+  console.log(`[VOICEVOX API] POST request received, VOICEVOX_API_URL=${VOICEVOX_API_URL}`);
+  
   try {
     const body = await request.json();
     const { text, speaker } = body;
+    console.log(`[VOICEVOX API] text length=${text?.length}, speaker=${speaker}`);
 
     // バリデーション
     if (!text || typeof text !== 'string') {
@@ -207,10 +232,12 @@ export async function POST(request: NextRequest) {
           controller.close();
         } catch (error) {
           // エラーイベントを送信
+          const errorMessage = error instanceof Error ? error.message : '音声生成に失敗しました';
+          console.error(`[VOICEVOX API] Stream error:`, error);
           controller.enqueue(
             encoder.encode(JSON.stringify({
               type: 'error',
-              message: error instanceof Error ? error.message : '音声生成に失敗しました',
+              message: errorMessage,
             }) + '\n')
           );
           controller.close();
