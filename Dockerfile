@@ -23,6 +23,9 @@ RUN npm run build
 # Runtime stage
 FROM node:20-alpine
 
+# Install ffmpeg for WAV to MP3 conversion
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 # Copy production files
@@ -31,9 +34,9 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/app ./app
-COPY --from=builder /app/core ./core
-COPY --from=builder /app/state ./state
-COPY --from=builder /app/shell ./shell
+COPY --from=builder /app/src/core.ts ./src/core.ts
+COPY --from=builder /app/src/state.ts ./src/state.ts
+COPY --from=builder /app/src/shell.tsx ./src/shell.tsx
 
 # Set production environment
 ENV NODE_ENV=production

@@ -83,7 +83,7 @@ const generateAudioActor = fromCallback<
   const { text, speakerId } = input;
 
   // タイムアウト管理
-  let timeoutId: ReturnType<typeof setTimeout>;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const controller = new AbortController();
 
   const resetTimeout = () => {
@@ -142,7 +142,7 @@ const generateAudioActor = fromCallback<
               for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
               }
-              const blob = new Blob([bytes], { type: 'audio/wav' });
+              const blob = new Blob([bytes], { type: 'audio/mpeg' });
               sendBack({ type: 'GENERATE_COMPLETE', audioBlob: blob });
               return;
             } else if (event.type === 'error') {

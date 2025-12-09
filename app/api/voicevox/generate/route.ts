@@ -4,9 +4,18 @@
 // POST /api/voicevox/generate
 // - NDJSON形式でチャンク進捗をストリーム送信
 // - チャンクごとにタイムアウトリセット可能な設計
+// - WAV→MP3変換対応
 // ============================================================
 
 import { NextRequest } from 'next/server';
+import { promises as fs } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 // 定数
 const VOICEVOX_API_URL = process.env.VOICEVOX_API_URL || 'http://localhost:50021';
@@ -106,6 +115,28 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+/** WAVをMP3に変換 */
+async function convertWavToMp3(wavBuffer: ArrayBuffer): Promise<Buffer> {
+  const id = randomUUID();
+  const inputPath = join(tmpdir(), `${id}.wav`);
+  const outputPath = join(tmpdir(), `${id}.mp3`);
+
+  try {
+    // WAVファイルを一時保存
+    await fs.writeFile(inputPath, Buffer.from(wavBuffer));
+
+    // ffmpegで変換
+    await execAsync(`ffmpeg -i "${inputPath}" -codec:a libmp3lame -qscale:a 2 "${outputPath}" -y`);
+
+    // MP3を読み込み
+    return await fs.readFile(outputPath);
+  } finally {
+    // 一時ファイルを削除
+    await fs.unlink(inputPath).catch(() => {});
+    await fs.unlink(outputPath).catch(() => {});
+  }
+}
+
 // ------------------------------------------------------------
 // POSTハンドラー（ストリーミング対応）
 // ------------------------------------------------------------
@@ -160,14 +191,15 @@ export async function POST(request: NextRequest) {
             audioBuffers.push(audio);
           }
 
-          // 全チャンク完了 - マージ
+          // 全チャンク完了 - マージしてMP3変換
           const mergedWav = mergeWavBuffers(audioBuffers);
+          const mp3Buffer = await convertWavToMp3(mergedWav);
 
-          // 完了イベントを送信（WAV形式）
+          // 完了イベントを送信（MP3形式）
           controller.enqueue(
             encoder.encode(JSON.stringify({
               type: 'complete',
-              audio: arrayBufferToBase64(mergedWav),
+              audio: mp3Buffer.toString('base64'),
             }) + '\n')
           );
 
