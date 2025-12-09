@@ -18,7 +18,8 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 // 定数
-const VOICEVOX_API_URL = process.env.VOICEVOX_API_URL || 'http://localhost:50021';
+// Cloud Run Sidecar環境ではIPv6(::1)解決で失敗するため127.0.0.1を使用
+const VOICEVOX_API_URL = process.env.VOICEVOX_API_URL || 'http://127.0.0.1:50021';
 const CHUNK_SIZE = 500;
 const CHUNK_TIMEOUT = 60000; // 1チャンクあたり60秒
 
