@@ -459,7 +459,7 @@ function GenerateButton({
           <span className="flex items-center justify-center gap-2">
             <LoadingSpinner size="sm" />
             {progress
-              ? `音声生成中... (${progress.current}/${progress.total})`
+              ? `音声生成中... ${Math.round((progress.current / progress.total) * 100)}%`
               : '音声を生成中...'
             }
           </span>

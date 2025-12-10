@@ -15,13 +15,16 @@ import { randomUUID } from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic'
+
 const execAsync = promisify(exec);
 
 // 定数
 // Cloud Run Sidecar環境ではIPv6(::1)解決で失敗するため127.0.0.1を使用
 const VOICEVOX_API_URL = process.env.VOICEVOX_API_URL || 'http://127.0.0.1:50021';
-const CHUNK_SIZE = 500;
-const CHUNK_TIMEOUT = 60000; // 1チャンクあたり60秒
+const CHUNK_SIZE = 300;
+const CHUNK_TIMEOUT = 300000; // 1チャンクあたり5分
 
 // ------------------------------------------------------------
 // ヘルパー関数

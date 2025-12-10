@@ -20,7 +20,7 @@ export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
 // 定数
 // ------------------------------------------------------------
 export const MAX_TEXT_LENGTH = 50000;
-export const CHUNK_SIZE = 500;
+export const CHUNK_SIZE = 300;
 export const CHUNK_TIMEOUT = 60000; // 1チャンクあたり60秒
 export const SHORT_TEXT_TIMEOUT = 60000; // 60秒
 export const LONG_TEXT_TIMEOUT = 1200000; // 20分（フォールバック用）

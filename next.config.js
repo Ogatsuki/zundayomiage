@@ -6,6 +6,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  // Cloud Runでは無視されるが、ローカル開発用に設定
+  serverRuntimeConfig: {
+    apiTimeout: 300000, // 5分（ミリ秒）
+  },
   env: {
     // Cloud Run Sidecar環境ではIPv6解決で失敗するため127.0.0.1を使用
     VOICEVOX_API_URL: process.env.VOICEVOX_API_URL || 'http://127.0.0.1:50021',
